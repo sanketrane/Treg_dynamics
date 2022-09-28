@@ -1,0 +1,8 @@
+*.pdf
+*.csv
+*.Rhistory
+*.DS_Store
+*.rds
+*.xlsx
+*.Rsave
+output/*
