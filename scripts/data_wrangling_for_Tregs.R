@@ -109,6 +109,24 @@ Treg_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8)  %
            (Spleen_naiveTregs + LN_naiveTregs))%>%
   select(-contains('fd'),  -contains('spl'), -contains('ln'), -contains('Thymic'))
 
+####### generating data for stan fitting -- Rdump format #########
+### merged dataset
+Pooled_data <- Treg_fd_Norm %>%
+  left_join(Treg_join, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
+  left_join(Treg_hostKi67, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
+  left_join(Treg_donorKi67, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K"), suffix = c(".host", ".donor")) %>%
+  select(-contains('spl'), -contains('ln'), -contains('fd')) 
+
+
+
+## Unique time points in the data 
+unique_times_<- chimera_data %>% distinct(age.at.S1K, .keep_all = TRUE) 
+data_time_chi <- chimera_data$age.at.S1K 
+solve_time_chi <- unique_times_chi$age.at.S1K  ## unique time points in the data
+## Map of the unique time points on all the timepoints
+time_index_chi <- purrr::map_dbl(data_time_chi, function(x) which(x == solve_time_chi))    # keeping track of index of time point in relation to solve_time
+
+
 
 
 ####### PLots ########
@@ -218,40 +236,40 @@ dev.off()
 
 #######Importing datafiles as .csv for model fitting precess #######
 Treg_join %>%
-  rename(Periphery = total_naiveTregs_periph,
-         Thymus = total_naiveTregs_thy) %>% 
+  mutate(Periphery = round(total_naiveTregs_periph, 0),
+         Thymus = round(total_naiveTregs_thy, 0)) %>% 
   select(-contains("total"), -contains('fd')) %>%
-  write.csv2(file = "data/Counts_naiTreg.csv", row.names = FALSE)
+  write.csv(file = "data/Counts_naiTreg.csv", row.names = FALSE)
 
 Treg_fd_Norm %>%
-  rename(Periphery = Nfd_naiveTregs_periph,
-         Thymus = Nfd_naiveTregs_thy) %>%
+  mutate(Periphery = round(Nfd_naiveTregs_periph, 4),
+         Thymus = round(Nfd_naiveTregs_thy, 4)) %>%
   select(-contains("Nfd")) %>%
-  write.csv2(file = "data/Nfd_naiTreg.csv", row.names = FALSE)
+  write.csv(file = "data/Nfd_naiTreg.csv", row.names = FALSE)
 
 Treg_hostKi67 %>%
-  rename(Periphery = Ki67_naiveTregs_periph,
-         Thymus = Ki67_naiveTregs_thy) %>%
-  write.csv2(file = "data/hostKi67_naiTreg.csv", row.names = FALSE)
+  mutate(Periphery = round(Ki67_naiveTregs_periph, 4),
+         Thymus = round(Ki67_naiveTregs_thy, 4)) %>%
+  write.csv(file = "data/hostKi67_naiTreg.csv", row.names = FALSE)
 
 Treg_donorKi67 %>%
-  rename(Periphery = Ki67_naiveTregs_periph,
-         Thymus = Ki67_naiveTregs_thy) %>%
-  write.csv2(file = "data/donorKi67_naiTreg.csv", row.names = FALSE)
+  mutate(Periphery = round(Ki67_naiveTregs_periph, 4),
+         Thymus = round(Ki67_naiveTregs_thy, 4)) %>%
+  write.csv(file = "data/donorKi67_naiTreg.csv", row.names = FALSE)
   
 source_join %>%
-  rename(DP1 = total_DP1,
-         FoxP3_Pos_SP4 = total_FoxP3_pos_SP4,
-         FoxP3_Neg_SP4 = total_FoxP3_neg_SP4)%>%
-  select(-contains("fd")) %>%
-  write.csv2(file = "data/Counts_thymicSource.csv", row.names = FALSE)
+  mutate(DP1 = round(total_DP1, 0),
+         FoxP3_Pos_SP4 = round(total_FoxP3_pos_SP4, 0),
+         FoxP3_Neg_SP4 = round(total_FoxP3_neg_SP4, 0))%>%
+  select(-contains("total"), -contains("fd")) %>%
+  write.csv(file = "data/Counts_thymicSource.csv", row.names = FALSE)
 
 source_join %>% 
-  rename(DP1 = fd_DP1,
-                     FoxP3_Pos_SP4 = fd_FoxP3_pos_SP4,
-                     FoxP3_Neg_SP4 = fd_FoxP3_neg_SP4) %>%
+  mutate(DP1 = round(fd_DP1, 4),
+         FoxP3_Pos_SP4 = round(fd_FoxP3_pos_SP4, 4),
+         FoxP3_Neg_SP4 = round(fd_FoxP3_neg_SP4, 4)) %>%
   select(-contains("total")) %>%
-  write.csv2(file = "data/Chimerism_thymicSource.csv", row.names = FALSE)
+  write.csv(file = "data/Chimerism_thymicSource.csv", row.names = FALSE)
 
 
 
