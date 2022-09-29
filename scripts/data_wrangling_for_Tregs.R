@@ -47,14 +47,16 @@ source_donor <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 2) %>%
   select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
   na.omit() %>% unique() %>%
   mutate(FoxP3_pos_SP4 = TH.Fox25Q2 + TH.Fox25Q3,  ### 2nd and 3r quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate
-         FoxP3_neg_SP4 = TH.Fox25Q1 + TH.Fox25Q4) %>%   
+         FoxP3_neg_SP4 = TH.Fox25Q1 + TH.Fox25Q4,
+         ratioQ1_Q4 =  TH.Fox25Q1/TH.Fox25Q4) %>%   
   select(-contains("Fox25"))
 
 source_host <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 3) %>%
   select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
   na.omit() %>% unique() %>%
   mutate(FoxP3_pos_SP4 = TH.Fox25Q2 + TH.Fox25Q3, ### 2nd and 3r quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate
-         FoxP3_neg_SP4 = TH.Fox25Q1 + TH.Fox25Q4) %>%
+         FoxP3_neg_SP4 = TH.Fox25Q1 + TH.Fox25Q4,
+         ratioQ1_Q4 =  TH.Fox25Q1/TH.Fox25Q4) %>%
   select(-contains("Fox25"))
 
 # merging total counts for host and donor compartments
@@ -109,9 +111,27 @@ Treg_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8)  %
            (Spleen_naiveTregs + LN_naiveTregs))%>%
   select(-contains('fd'),  -contains('spl'), -contains('ln'), -contains('Thymic'))
 
-####### generating data for stan fitting -- Rdump format #########
+source_donorKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 7) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
+  na.omit() %>% unique() %>%
+  left_join(source_donor, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("Q1"), contains("Q4")) %>%
+  mutate(FoxP3_Neg_SP4 = ((TH.Fox25Q1/100) * ratioQ1_Q4 + (TH.Fox25Q4/100))/(1 + ratioQ1_Q4))  %>%   
+  select(-contains("Q1"), -contains("Q4"))
+
+
+source_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
+  na.omit() %>% unique() %>%
+  left_join(source_host, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("Q1"), contains("Q4")) %>%
+  mutate(FoxP3_Neg_SP4 = ((TH.Fox25Q1/100) * ratioQ1_Q4 + (TH.Fox25Q4/100))/(1 + ratioQ1_Q4))  %>%   
+  select(-contains("Q1"), -contains("Q4"))
+
+
+  ####### generating data for stan fitting -- Rdump format #########
 ### merged dataset
-Pooled_data <- Treg_fd_Norm %>%
+Pooled_source_data <- source_join %>%
   left_join(Treg_join, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
   left_join(Treg_hostKi67, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
   left_join(Treg_donorKi67, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K"), suffix = c(".host", ".donor")) %>%
@@ -120,7 +140,7 @@ Pooled_data <- Treg_fd_Norm %>%
 
 
 ## Unique time points in the data 
-unique_times_<- chimera_data %>% distinct(age.at.S1K, .keep_all = TRUE) 
+unique_times_<- Pooled_data %>% distinct(age.at.S1K, .keep_all = TRUE) 
 data_time_chi <- chimera_data$age.at.S1K 
 solve_time_chi <- unique_times_chi$age.at.S1K  ## unique time points in the data
 ## Map of the unique time points on all the timepoints
@@ -258,18 +278,21 @@ Treg_donorKi67 %>%
   write.csv(file = "data/donorKi67_naiTreg.csv", row.names = FALSE)
   
 source_join %>%
-  mutate(DP1 = round(total_DP1, 0),
-         FoxP3_Pos_SP4 = round(total_FoxP3_pos_SP4, 0),
-         FoxP3_Neg_SP4 = round(total_FoxP3_neg_SP4, 0))%>%
+  mutate(FoxP3_Neg_SP4 = round(total_FoxP3_neg_SP4, 0))%>%
   select(-contains("total"), -contains("fd")) %>%
   write.csv(file = "data/Counts_thymicSource.csv", row.names = FALSE)
 
 source_join %>% 
-  mutate(DP1 = round(fd_DP1, 4),
-         FoxP3_Pos_SP4 = round(fd_FoxP3_pos_SP4, 4),
-         FoxP3_Neg_SP4 = round(fd_FoxP3_neg_SP4, 4)) %>%
-  select(-contains("total")) %>%
+  mutate(FoxP3_Neg_SP4 = round(fd_FoxP3_neg_SP4, 4)) %>%
+  select(-contains("total"), -contains("fd")) %>%
   write.csv(file = "data/Chimerism_thymicSource.csv", row.names = FALSE)
 
+
+source_donorKi67 %>%
+  write.csv(file = "data/donorKi67_thymicSource.csv", row.names = FALSE)
+
+
+source_hostKi67 %>%
+  write.csv(file = "data/hostKi67_thymicSource.csv", row.names = FALSE)
 
 
