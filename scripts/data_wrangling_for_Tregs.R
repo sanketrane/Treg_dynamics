@@ -9,19 +9,25 @@ library(tidyverse)
 ######### naive Tregs total counts and donor fraction ######### 
 ## Counts of donor naive Tregs 
 Treg_donor <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 2) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains('naiTreg')) %>% 
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains('Treg')) %>% 
   rename(Spleen_naiveTregs = SP.naiTreg,
          LN_naiveTregs = LN.naiTreg,
-         Thymic_naiveTregs = TH.naiTreg) %>% 
+         Thymic_naiveTregs = TH.naiTreg,
+         Spleen_memoryTregs = SP.memTreg,
+         LN_memoryTregs = LN.memTreg,
+         Thymic_memoryTregs = TH.memTreg) %>% 
   na.omit() %>% unique()
 
 
 ## Counts of host naive Tregs 
 Treg_host <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 3) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains('naiTreg')) %>% 
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains('Treg')) %>% 
   rename(Spleen_naiveTregs = SP.naiTreg,
          LN_naiveTregs = LN.naiTreg,
-         Thymic_naiveTregs = TH.naiTreg) %>% 
+         Thymic_naiveTregs = TH.naiTreg,
+         Spleen_memoryTregs = SP.memTreg,
+         LN_memoryTregs = LN.memTreg,
+         Thymic_memoryTregs = TH.memTreg) %>% 
   na.omit() %>% unique()
 
 
@@ -33,11 +39,19 @@ Treg_join <- full_join(Treg_host, Treg_donor, by = c("mouse.ID", "time.post.BMT"
          total_naiveTregs_ln = LN_naiveTregs.host + LN_naiveTregs.donor,
          total_naiveTregs_periph = total_naiveTregs_spl + total_naiveTregs_ln,  ## periphery = spleen + LN
          total_naiveTregs_thy = Thymic_naiveTregs.host + Thymic_naiveTregs.donor,
+         total_memoryTregs_spl = Spleen_memoryTregs.host + Spleen_memoryTregs.donor,
+         total_memoryTregs_ln = LN_memoryTregs.host + LN_memoryTregs.donor,
+         total_memoryTregs_periph = total_memoryTregs_spl + total_memoryTregs_ln,  ## periphery = spleen + LN
+         total_memoryTregs_thy = Thymic_memoryTregs.host + Thymic_memoryTregs.donor,
          ## fd = donor fraction
          fd_naiveTregs_spl = Spleen_naiveTregs.donor/total_naiveTregs_spl,
          fd_naiveTregs_ln = LN_naiveTregs.donor/total_naiveTregs_ln,
          fd_naiveTregs_periph = (Spleen_naiveTregs.donor + LN_naiveTregs.donor)/total_naiveTregs_periph,
-         fd_naiveTregs_thy = Thymic_naiveTregs.donor/total_naiveTregs_thy)  %>%
+         fd_naiveTregs_thy = Thymic_naiveTregs.donor/total_naiveTregs_thy,
+         fd_memoryTregs_spl = Spleen_memoryTregs.donor/total_memoryTregs_spl,
+         fd_memoryTregs_ln = LN_memoryTregs.donor/total_memoryTregs_ln,
+         fd_memoryTregs_periph = (Spleen_memoryTregs.donor + LN_memoryTregs.donor)/total_memoryTregs_periph,
+         fd_memoryTregs_thy = Thymic_memoryTregs.donor/total_memoryTregs_thy)  %>%
   filter(mouse.ID != "314807") %>%  ## filtering weird datapoint!
   select(-contains(".host"), -contains(".donor")) 
 
@@ -76,12 +90,20 @@ source_join <- full_join(source_host, source_donor, by = c("mouse.ID", "time.pos
 # normalising donor fraction in splenic naive tregs by dividing with the donor fractions in the source compartment
 Treg_fd_Norm <- Treg_join %>%
   full_join(source_join, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"))%>%
-  mutate(Nfd_naiveTregs_spl = fd_naiveTregs_spl/ fd_FoxP3_neg_SP4,
-         Nfd_naiveTregs_ln = fd_naiveTregs_ln/ fd_FoxP3_neg_SP4,
-         Nfd_naiveTregs_periph = fd_naiveTregs_periph/ fd_FoxP3_neg_SP4,
-         Nfd_naiveTregs_thy = fd_naiveTregs_thy/ fd_FoxP3_neg_SP4) %>% 
-  filter(Nfd_naiveTregs_periph <= 1.2)%>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("Nfd")) %>% na.omit()
+  mutate(naiveTregs_Nfd_spl = fd_naiveTregs_spl/ fd_FoxP3_neg_SP4,
+         naiveTregs_Nfd_ln = fd_naiveTregs_ln/ fd_FoxP3_neg_SP4,
+         naiveTregs_Nfd_periph = fd_naiveTregs_periph/ fd_FoxP3_neg_SP4,
+         naiveTregs_Nfd_thy = fd_naiveTregs_thy/ fd_FoxP3_neg_SP4,
+         memoryTregs_Chi_spl = fd_memoryTregs_spl/ fd_FoxP3_neg_SP4,
+         memoryTregs_Chi_ln = fd_memoryTregs_ln/ fd_FoxP3_neg_SP4,
+         memoryTregs_Chi_periph = fd_memoryTregs_periph/ fd_FoxP3_neg_SP4,
+         memoryTregs_Chi_thy = fd_memoryTregs_thy/fd_FoxP3_neg_SP4,
+         memoryTregs_Nfd_spl = fd_memoryTregs_spl/fd_naiveTregs_spl,
+         memoryTregs_Nfd_ln = fd_memoryTregs_ln/fd_naiveTregs_ln,
+         memoryTregs_Nfd_periph = fd_memoryTregs_periph/fd_naiveTregs_periph,
+         memoryTregs_Nfd_thy = fd_memoryTregs_thy/fd_naiveTregs_thy) %>% 
+  filter(memoryTregs_Nfd_periph <= 1.2)%>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("Nfd"), contains("Chi")) %>% na.omit()
 
 
 
@@ -129,25 +151,6 @@ source_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8) 
   select(-contains("Q1"), -contains("Q4"))
 
 
-  ####### generating data for stan fitting -- Rdump format #########
-### merged dataset
-Pooled_source_data <- source_join %>%
-  left_join(Treg_join, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
-  left_join(Treg_hostKi67, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
-  left_join(Treg_donorKi67, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K"), suffix = c(".host", ".donor")) %>%
-  select(-contains('spl'), -contains('ln'), -contains('fd')) 
-
-
-
-## Unique time points in the data 
-unique_times_<- Pooled_data %>% distinct(age.at.S1K, .keep_all = TRUE) 
-data_time_chi <- chimera_data$age.at.S1K 
-solve_time_chi <- unique_times_chi$age.at.S1K  ## unique time points in the data
-## Map of the unique time points on all the timepoints
-time_index_chi <- purrr::map_dbl(data_time_chi, function(x) which(x == solve_time_chi))    # keeping track of index of time point in relation to solve_time
-
-
-
 
 ####### PLots ########
 
@@ -162,21 +165,24 @@ myTheme <-  theme(axis.text = element_text(size = 14),
       legend.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 14))
 
-Treg_fd_Norm %>%
-  rename(Periphery = Nfd_naiveTregs_periph,
-         Thymus = Nfd_naiveTregs_thy) %>%
+Treg_fd_Norm  %>%
+  select(mouse.ID, time.post.BMT, contains("age"), contains("periph"), contains('thy')) %>%
   gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Nfd") %>%
-  filter(Pop_of_interest !=  "Nfd_naiveTregs_spl",
-         Pop_of_interest !=  "Nfd_naiveTregs_ln") %>%
+  mutate(Tissue_location = ifelse(grepl("spl", Pop_of_interest), "Spleen",
+                                  ifelse(grepl("ln", Pop_of_interest), "LN",
+                                        ifelse(grepl("periph", Pop_of_interest), "Periphery", "Thymus"))),
+         pop_nfd = ifelse(grepl("naive", Pop_of_interest), "Naive",
+                                  ifelse(grepl("memoryTregs_Nfd", Pop_of_interest), "Memory_normto_Naive", 
+                                         "Memory_normto_SP4"))) %>%
   ggplot(aes(x = time.post.BMT, y = Nfd)) +
-  geom_point(aes(col=age.at.BMT), size=2) +
+  geom_point(aes(col=Tissue_location), size=2) +
   geom_hline(yintercept = 1.00, linetype = 2, size =1, col=1) +
-  scale_color_viridis_c(name = "Host age at BMT") +
-  #scale_color_manual(values = c("#046C9A", "#DE7921"), name = NULL, labels=c("Periphery", "Thymus")) +
+  #scale_color_viridis_d(name = "Host age at BMT") + ylim(0,1.1)+
+  scale_color_manual(name=NULL, values=c(2,4,7, 3)) + ylim(0,1.1)+
   #scale_x_log10(breaks=c(75, 150, 300)) + 
-  labs(x = "Days post BMT", y = NULL, title = "Donor fractions normalised to chimerism in FoxP3- SP4") +
-  facet_wrap(.~ Pop_of_interest)  +
-  theme_bw() + myTheme + theme(legend.position = c(0.9, 0.25), legend.background = element_blank())
+  labs(x = "Days post BMT", y = NULL, title = "Normalized donor fractions in Tregs") +
+  facet_wrap(.~ pop_nfd) + #+ guides(col='none')+
+  theme_bw() + myTheme + theme(legend.position = c(0.95, 0.15), legend.background = element_blank())
   
 
 Treg_join %>%
@@ -209,8 +215,8 @@ source_join %>%
   #scale_color_manual(values = c(7, 2, 4), name = NULL, labels=c("DP1", "FoxP3- SP4", "FoxP3+ SP4")) +
   labs(x = "Days post BMT", y = NULL, title = "Donor fractions in Thymic precursors") +
   facet_wrap(.~ Pop_of_interest) +
-  theme_bw() + myTheme #+ theme(legend.position = c(0.8, 0.8), legend.background = element_blank(), legend.direction = "horizontal")
-  
+  theme_bw() + myTheme #+ theme(legend.position = c(0.9, 0.77), legend.background = element_blank())
+
 source_join %>%
   rename(DP1 = total_DP1,
          FoxP3_Pos_SP4 = total_FoxP3_pos_SP4,
@@ -231,11 +237,11 @@ Treg_donorKi67 %>%
   rename(Periphery = Ki67_naiveTregs_periph,
          Thymus = Ki67_naiveTregs_thy) %>%
   gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Donor_Ki67") %>%
-  ggplot(aes(x = age.at.S1K, y = Donor_Ki67)) +
+  ggplot(aes(x = time.post.BMT, y = Donor_Ki67)) +
   geom_point(aes(col=age.at.BMT), size=2) +
   scale_color_viridis_c(name = "Host age at BMT") + ylim(0, 0.4) +
   #scale_color_manual(values = c(7, 2, 4), name = NULL, labels=c("DP1", "FoxP3- SP4", "FoxP3+ SP4")) +
-  labs(x = "Host age (days)", y = NULL, title = "Ki67 fractions in donor naive Tregs") +
+  labs(x = "Days post BMT", y = NULL, title = "Ki67 fractions in donor naive Tregs") +
   facet_wrap(.~ Pop_of_interest) +
   theme_bw() + myTheme
 
@@ -243,14 +249,13 @@ Treg_hostKi67 %>%
   rename(Periphery = Ki67_naiveTregs_periph,
          Thymus = Ki67_naiveTregs_thy) %>%
   gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Donor_Ki67") %>%
-  ggplot(aes(x = age.at.S1K, y = Donor_Ki67)) +
+  ggplot(aes(x = time.post.BMT, y = Donor_Ki67)) +
   geom_point(aes(col=age.at.BMT), size=2) +
   scale_color_viridis_c(name = "Host age at BMT") + ylim(0, 0.4) +
   #scale_color_manual(values = c(7, 2, 4), name = NULL, labels=c("DP1", "FoxP3- SP4", "FoxP3+ SP4")) +
-  labs(x = "Host age (days)", y = NULL, title = "Ki67 fractions in host naive Tregs") +
+  labs(x = "Days post BMT", y = NULL, title = "Ki67 fractions in host naive Tregs") +
   facet_wrap(.~ Pop_of_interest) +
   theme_bw() + myTheme
-
 
 dev.off()
 
