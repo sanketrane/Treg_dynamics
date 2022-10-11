@@ -6,6 +6,60 @@ rm(list = ls()); gc()
 #Loading required libraries
 library(tidyverse)
 
+## Precursor population dynamics
+
+#### Putative precursors for naive Tregs: Thymic DP1, Thymic FoxP3negative SP4
+#### Putative precursors for memory Tregs: Thymic DP1/Thymic FoxP3negative SP4 (representing RTE), naive Tregs
+
+### Ki67 Proportions
+source_donorKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 7) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
+  na.omit() %>% unique() 
+
+source_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
+  na.omit() %>% unique() 
+
+### Total counts and donor fractions for the source population
+source_donor <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 2) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
+  left_join(source_donorKi67, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), suffix= c("_counts", "_ki")) %>%
+  na.omit() %>% unique() %>%
+  mutate(### 1st and 4th quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate, FoxP3- SP4 = Treg free SP4
+    FoxP3_neg_SP4_counts = TH.Fox25Q1_counts + TH.Fox25Q4_counts,
+    ### 2nd and 3rd quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate, FoxP3+ SP4 = SP4 Tregs
+    FoxP3_pos_SP4_counts = TH.Fox25Q2_counts + TH.Fox25Q3_counts,
+    FoxP3_neg_SP4_ki =  (((TH.Fox25Q1_ki/100) * TH.Fox25Q1_counts) + ((TH.Fox25Q4_ki/100) * TH.Fox25Q4_counts))/(TH.Fox25Q1_counts + TH.Fox25Q4_counts),
+    FoxP3_pos_SP4_ki =  (((TH.Fox25Q2_ki/100) * TH.Fox25Q2_counts) + ((TH.Fox25Q3_ki/100) * TH.Fox25Q3_counts))/(TH.Fox25Q2_counts + TH.Fox25Q3_counts))%>%   
+  select(-contains("Fox25"))
+
+source_host <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 3) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
+  left_join(source_hostKi67, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), suffix= c("_counts", "_ki")) %>%
+  na.omit() %>% unique() %>%
+  mutate(### 1st and 4th quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate, FoxP3- SP4 = Treg free SP4
+    FoxP3_neg_SP4_counts = TH.Fox25Q1_counts + TH.Fox25Q4_counts,
+    ### 2nd and 3rd quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate, FoxP3+ SP4 = SP4 Tregs
+    FoxP3_pos_SP4_counts = TH.Fox25Q2_counts + TH.Fox25Q3_counts,
+    FoxP3_neg_SP4_ki =  (((TH.Fox25Q1_ki/100) * TH.Fox25Q1_counts) + ((TH.Fox25Q4_ki/100) * TH.Fox25Q4_counts))/(TH.Fox25Q1_counts + TH.Fox25Q4_counts),
+    FoxP3_pos_SP4_ki =  (((TH.Fox25Q2_ki/100) * TH.Fox25Q2_counts) + ((TH.Fox25Q3_ki/100) * TH.Fox25Q3_counts))/(TH.Fox25Q2_counts + TH.Fox25Q3_counts))%>%   
+  select(-contains("Fox25"))
+
+# merging total counts for host and donor compartments
+# calculating total counts, donor fractions
+source_join <- full_join(source_host, source_donor, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), suffix= c(".host", ".donor")) %>%
+  mutate(# total = donor + host
+    total_DP1 = TH.DP1_counts.host + TH.DP1_counts.donor,
+    total_FoxP3_neg_SP4 = FoxP3_neg_SP4_counts.host + FoxP3_neg_SP4_counts.donor,
+    total_FoxP3_pos_SP4 = FoxP3_pos_SP4_counts.host + FoxP3_pos_SP4_counts.donor,
+    ## fd = donor fraction
+    fd_DP1 = TH.DP1_counts.donor/total_DP1,
+    fd_FoxP3_neg_SP4 = FoxP3_neg_SP4_counts.donor/total_FoxP3_neg_SP4,
+    fd_FoxP3_pos_SP4 = FoxP3_pos_SP4_counts.donor/total_FoxP3_pos_SP4) %>%
+  select(-contains("counts"))%>%
+  na.omit() %>% unique()
+
+
 ######### naive Tregs total counts and donor fraction ######### 
 ## Counts of donor naive Tregs 
 Treg_donor <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 2) %>%
@@ -55,49 +109,18 @@ Treg_join <- full_join(Treg_host, Treg_donor, by = c("mouse.ID", "time.post.BMT"
   filter(mouse.ID != "314807") %>%  ## filtering weird datapoint!
   select(-contains(".host"), -contains(".donor")) 
 
-
-# total counts and donor fractions for the source poppulation
-source_donor <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 2) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
-  na.omit() %>% unique() %>%
-  mutate(FoxP3_pos_SP4 = TH.Fox25Q2 + TH.Fox25Q3,  ### 2nd and 3r quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate
-         FoxP3_neg_SP4 = TH.Fox25Q1 + TH.Fox25Q4,
-         ratioQ1_Q4 =  TH.Fox25Q1/TH.Fox25Q4) %>%   
-  select(-contains("Fox25"))
-
-source_host <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 3) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
-  na.omit() %>% unique() %>%
-  mutate(FoxP3_pos_SP4 = TH.Fox25Q2 + TH.Fox25Q3, ### 2nd and 3r quadrants of FOXP3 (x-axis) and CD25 (y-axis) Boolean gate
-         FoxP3_neg_SP4 = TH.Fox25Q1 + TH.Fox25Q4,
-         ratioQ1_Q4 =  TH.Fox25Q1/TH.Fox25Q4) %>%
-  select(-contains("Fox25"))
-
-# merging total counts for host and donor compartments
-# calculating total counts, donor fractions
-source_join <- full_join(source_host, source_donor, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), suffix= c(".host", ".donor")) %>%
-  mutate(# total = donor + host
-         total_DP1 = TH.DP1.host + TH.DP1.donor,
-         total_FoxP3_pos_SP4 = FoxP3_pos_SP4.host + FoxP3_pos_SP4.donor,
-         total_FoxP3_neg_SP4 = FoxP3_neg_SP4.host + FoxP3_neg_SP4.donor,
-         ## fd = donor fraction
-         fd_DP1 = TH.DP1.donor/total_DP1,
-         fd_FoxP3_pos_SP4 = FoxP3_pos_SP4.donor/total_FoxP3_pos_SP4,
-         fd_FoxP3_neg_SP4 = FoxP3_neg_SP4.donor/total_FoxP3_neg_SP4)%>%
-  select(-contains(".host"), -contains(".donor"))
-
-
 # normalising donor fraction in splenic naive tregs by dividing with the donor fractions in the source compartment
-Treg_fd_Norm <- Treg_join %>%
-  full_join(source_join, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"))%>%
-  mutate(naiveTregs_Nfd_spl = fd_naiveTregs_spl/ fd_FoxP3_neg_SP4,
-         naiveTregs_Nfd_ln = fd_naiveTregs_ln/ fd_FoxP3_neg_SP4,
-         naiveTregs_Nfd_periph = fd_naiveTregs_periph/ fd_FoxP3_neg_SP4,
-         naiveTregs_Nfd_thy = fd_naiveTregs_thy/ fd_FoxP3_neg_SP4,
-         memoryTregs_Chi_spl = fd_memoryTregs_spl/ fd_FoxP3_neg_SP4,
-         memoryTregs_Chi_ln = fd_memoryTregs_ln/ fd_FoxP3_neg_SP4,
-         memoryTregs_Chi_periph = fd_memoryTregs_periph/ fd_FoxP3_neg_SP4,
-         memoryTregs_Chi_thy = fd_memoryTregs_thy/fd_FoxP3_neg_SP4,
+Treg_fd_Norm <- source_join %>%
+  select("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT", contains('fd')) %>%
+  full_join(Treg_join, by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"))%>%
+  mutate(naiveTregs_Nfd_spl = fd_naiveTregs_spl/ fd_DP1,
+         naiveTregs_Nfd_ln = fd_naiveTregs_ln/ fd_DP1,
+         naiveTregs_Nfd_periph = fd_naiveTregs_periph/ fd_DP1,
+         naiveTregs_Nfd_thy = fd_naiveTregs_thy/ fd_DP1,
+         memoryTregs_Chi_spl = fd_memoryTregs_spl/ fd_DP1,
+         memoryTregs_Chi_ln = fd_memoryTregs_ln/ fd_DP1,
+         memoryTregs_Chi_periph = fd_memoryTregs_periph/ fd_DP1,
+         memoryTregs_Chi_thy = fd_memoryTregs_thy/fd_DP1,
          memoryTregs_Nfd_spl = fd_memoryTregs_spl/fd_naiveTregs_spl,
          memoryTregs_Nfd_ln = fd_memoryTregs_ln/fd_naiveTregs_ln,
          memoryTregs_Nfd_periph = fd_memoryTregs_periph/fd_naiveTregs_periph,
@@ -106,49 +129,42 @@ Treg_fd_Norm <- Treg_join %>%
   select(contains("mouse.ID"), contains("time"), contains("age"), contains("Nfd"), contains("Chi")) %>% na.omit()
 
 
-
-
 ######### naive Tregs Ki67 proportions in host and donor ######### 
 ## Percent ki67 in donor naive Tregs 
 Treg_donorKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 7)  %>% 
   mutate(Ki67_naiveTregs_spl = SP.naiTreg/100,
          Ki67_naiveTregs_ln = LN.naiTreg/100,
-         Ki67_naiveTregs_thy = TH.naiTreg/100) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains('naive')) %>%
+         Ki67_naiveTregs_thy = TH.naiTreg/100,
+         Ki67_memoryTregs_spl = SP.memTreg/100,
+         Ki67_memoryTregs_ln = LN.memTreg/100,
+         Ki67_memoryTregs_thy = TH.memTreg/100) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains('Ki67')) %>%
   na.omit() %>% unique() %>%
   left_join(Treg_donor, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K"))  %>%
   mutate(Ki67_naiveTregs_periph = (Ki67_naiveTregs_spl * Spleen_naiveTregs + Ki67_naiveTregs_ln * LN_naiveTregs)/
-           (Spleen_naiveTregs + LN_naiveTregs))%>%
+           (Spleen_naiveTregs + LN_naiveTregs),
+         Ki67_memoryTregs_periph = (Ki67_memoryTregs_spl * Spleen_memoryTregs + Ki67_memoryTregs_ln * LN_memoryTregs)/
+           (Spleen_memoryTregs + LN_memoryTregs))%>%
   select(-contains('fd'),  -contains('spl'), -contains('ln'), -contains('Thymic'))
 
 ## Percent ki67 in host naive Tregs 
 Treg_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8)  %>% 
   mutate(Ki67_naiveTregs_spl = SP.naiTreg/100,
          Ki67_naiveTregs_ln = LN.naiTreg/100,
-         Ki67_naiveTregs_thy = TH.naiTreg/100) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains('naive')) %>%
+         Ki67_naiveTregs_thy = TH.naiTreg/100,
+         Ki67_memoryTregs_spl = SP.memTreg/100,
+         Ki67_memoryTregs_ln = LN.memTreg/100,
+         Ki67_memoryTregs_thy = TH.memTreg/100) %>%
+  select(contains("mouse.ID"), contains("time"), contains("age"), contains('Ki67')) %>%
   na.omit() %>% unique() %>%
   left_join(Treg_host, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K"))  %>%
   mutate(Ki67_naiveTregs_periph = (Ki67_naiveTregs_spl * Spleen_naiveTregs + Ki67_naiveTregs_ln * LN_naiveTregs)/
-           (Spleen_naiveTregs + LN_naiveTregs))%>%
+           (Spleen_naiveTregs + LN_naiveTregs),
+         Ki67_memoryTregs_periph = (Ki67_memoryTregs_spl * Spleen_memoryTregs + Ki67_memoryTregs_ln * LN_memoryTregs)/
+           (Spleen_memoryTregs + LN_memoryTregs))%>%
   select(-contains('fd'),  -contains('spl'), -contains('ln'), -contains('Thymic'))
 
-source_donorKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 7) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
-  na.omit() %>% unique() %>%
-  left_join(source_donor, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("Q1"), contains("Q4")) %>%
-  mutate(FoxP3_Neg_SP4 = ((TH.Fox25Q1/100) * ratioQ1_Q4 + (TH.Fox25Q4/100))/(1 + ratioQ1_Q4))  %>%   
-  select(-contains("Q1"), -contains("Q4"))
 
-
-source_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("DP1"), contains("Fox25"))%>% 
-  na.omit() %>% unique() %>%
-  left_join(source_host, by = c("mouse.ID", "time.post.BMT", "age.at.BMT", "age.at.S1K")) %>%
-  select(contains("mouse.ID"), contains("time"), contains("age"), contains("Q1"), contains("Q4")) %>%
-  mutate(FoxP3_Neg_SP4 = ((TH.Fox25Q1/100) * ratioQ1_Q4 + (TH.Fox25Q4/100))/(1 + ratioQ1_Q4))  %>%   
-  select(-contains("Q1"), -contains("Q4"))
 
 
 
@@ -165,20 +181,21 @@ myTheme <-  theme(axis.text = element_text(size = 14),
       legend.title = element_text(size = 12, face = "bold"),
       strip.text = element_text(size = 14))
 
-Treg_fd_Norm  %>%
-  select(mouse.ID, time.post.BMT, contains("age"), contains("periph"), contains('thy')) %>%
+Treg_fd_Norm %>%
+  select(mouse.ID, time.post.BMT, contains("age"), contains("spl"), contains('ln')) %>%
   gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Nfd") %>%
   mutate(Tissue_location = ifelse(grepl("spl", Pop_of_interest), "Spleen",
                                   ifelse(grepl("ln", Pop_of_interest), "LN",
                                         ifelse(grepl("periph", Pop_of_interest), "Periphery", "Thymus"))),
-         pop_nfd = ifelse(grepl("naive", Pop_of_interest), "Naive",
+         pop_nfd = ifelse(grepl("naive", Pop_of_interest), "Naive_normto_DP1",
                                   ifelse(grepl("memoryTregs_Nfd", Pop_of_interest), "Memory_normto_Naive", 
-                                         "Memory_normto_SP4"))) %>%
+                                         "Memory_normto_DP1"))) %>%
+  #filter(pop_nfd != "Naive_normto_DP1") %>%
   ggplot(aes(x = time.post.BMT, y = Nfd)) +
   geom_point(aes(col=Tissue_location), size=2) +
   geom_hline(yintercept = 1.00, linetype = 2, size =1, col=1) +
   #scale_color_viridis_d(name = "Host age at BMT") + ylim(0,1.1)+
-  scale_color_manual(name=NULL, values=c(2,4,7, 3)) + ylim(0,1.1)+
+  scale_color_manual(name=NULL, values=c(2,4,7,3)) + ylim(0,1.1)+
   #scale_x_log10(breaks=c(75, 150, 300)) + 
   labs(x = "Days post BMT", y = NULL, title = "Normalized donor fractions in Tregs") +
   facet_wrap(.~ pop_nfd) + #+ guides(col='none')+
@@ -186,49 +203,62 @@ Treg_fd_Norm  %>%
   
 
 Treg_join %>%
-  select(-contains('fd')) %>%
-  rename(Periphery = total_naiveTregs_periph,
-         Thymus = total_naiveTregs_thy) %>%
+  select(mouse.ID, time.post.BMT, contains("age"), contains("periph"), contains('thy'), -contains('fd')) %>%
   gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Counts") %>%
-  filter(Pop_of_interest !=  "total_naiveTregs_spl",
-         Pop_of_interest !=  "total_naiveTregs_ln") %>%
+  mutate(Tissue_location = ifelse(grepl("spl", Pop_of_interest), "Spleen",
+                                  ifelse(grepl("ln", Pop_of_interest), "LN",
+                                         ifelse(grepl("periph", Pop_of_interest), "Periphery", "Thymus"))),
+         subpop = ifelse(grepl("naive", Pop_of_interest), "Naive", "Memory")) %>%
   ggplot(aes(x = age.at.S1K, y = Counts)) +
-  geom_point(aes(col=age.at.BMT), size=2) +
-  scale_color_viridis_c(name = "Host age at BMT") +
+  geom_point(aes(col=Tissue_location), size=2) +
+  scale_color_manual(values = c(2, 4), name = NULL) +
   scale_y_log10(limits = c(5e3, 1e7), breaks = c(1e4, 1e5, 1e6,1e7)) +
   scale_x_continuous(limits = c(60, 600), trans = "log10", breaks = c(75, 150, 300, 600)) + 
-  labs(x = "Host age (days)", y = NULL, title = "Total cell counts") + 
-  facet_wrap(.~ Pop_of_interest) + #+ guides(col = 'none') +
-  theme_bw() + myTheme + theme(legend.position = c(0.9, 0.77), legend.background = element_blank())
+  labs(x = "Host age (days)", y = NULL, title = "Total Treg counts") + 
+  facet_wrap(.~ subpop) + #+ guides(col = 'none') +
+  theme_bw() + myTheme #+ theme(legend.position = c(0.9, 0.77), legend.background = element_blank())
   
-
+### source fd
 source_join %>%
-  rename(DP1 = fd_DP1,
-         FoxP3_Pos_SP4 = fd_FoxP3_pos_SP4,
-         FoxP3_Neg_SP4 = fd_FoxP3_neg_SP4) %>%
-  select(-contains("total"), -"FoxP3_Pos_SP4") %>%
+  select(-contains("total"), -contains('ki')) %>%
+  rename(DP1 = fd_DP1,  FoxP3_neg_SP4 = fd_FoxP3_neg_SP4, FoxP3_pos_SP4 = fd_FoxP3_pos_SP4) %>%
   gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Chi") %>%
   ggplot(aes(x = time.post.BMT, y = Chi)) +
   geom_point(aes(col=age.at.BMT), size=2) +
-  geom_hline(yintercept = 1.00, linetype = 2, size =1, col=1) +
-  scale_color_viridis_c(name = "Host age at BMT") +
-  #scale_color_manual(values = c(7, 2, 4), name = NULL, labels=c("DP1", "FoxP3- SP4", "FoxP3+ SP4")) +
-  labs(x = "Days post BMT", y = NULL, title = "Donor fractions in Thymic precursors") +
-  facet_wrap(.~ Pop_of_interest) +
-  theme_bw() + myTheme #+ theme(legend.position = c(0.9, 0.77), legend.background = element_blank())
+  geom_hline(yintercept = 1.00, linetype = 2, size =1, col=1) + ylim(0,1.05) +
+  scale_color_viridis_c(name = "Age at BMT") +
+  labs(x = "Days post BMT", y = NULL, title = "Donor fractions in thymic populations") +
+  facet_wrap(.~ Pop_of_interest, ncol = 3) +
+  theme_bw() + myTheme #+ theme(legend.position = c(0.92, 0.87), legend.background = element_blank())
 
+## Source Ki67
 source_join %>%
-  rename(DP1 = total_DP1,
-         FoxP3_Pos_SP4 = total_FoxP3_pos_SP4,
-         FoxP3_Neg_SP4 = total_FoxP3_neg_SP4) %>%
-  select(-contains("fd"), -"FoxP3_Pos_SP4") %>%
-  gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Chi") %>%
-  ggplot(aes(x = age.at.S1K, y = Chi)) +
+  mutate(DP1_ki.host = TH.DP1_ki.host/100, DP1_ki.donor = TH.DP1_ki.donor/100) %>%
+  select(-contains("total"), -contains('fd'), -contains('TH')) %>%
+  gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "propns_Ki67") %>%
+  mutate(subcomp = ifelse(grepl("donor", Pop_of_interest), "Donor", "Host"),
+         subpop = ifelse(grepl("DP1", Pop_of_interest), "DP1",
+                         ifelse(grepl("neg", Pop_of_interest), "FoxP3_neg_SP4", "FoxP3_pos_SP4"))) %>%
+  ggplot(aes(x = time.post.BMT, y = propns_Ki67)) +
+  geom_point(aes(col=subcomp), size=2) +
+  geom_hline(yintercept = 1.00, linetype = 2, size =1, col=1) +
+  scale_color_manual(values = c(7, 2, 4), name = NULL) +
+  labs(x = "Days post BMT", y = NULL, title = "Ki67 fractions in thymic populations") +
+  facet_wrap(.~ subpop, ncol = 3) +
+  theme_bw() + myTheme + theme(legend.position = c(0.92, 0.87), legend.background = element_blank()) 
+
+
+## Source Counts
+source_join %>%
+  select(-contains("ki"), -contains('fd'))  %>%
+  rename(DP1 = total_DP1,  FoxP3_neg_SP4 = total_FoxP3_neg_SP4, FoxP3_pos_SP4 = total_FoxP3_pos_SP4) %>%
+  gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Counts") %>%
+  ggplot(aes(x = age.at.S1K, y = Counts)) +
   geom_point(aes(col=age.at.BMT), size=2) +
-  scale_color_viridis_c(name = "Host age at BMT") +
+  scale_color_viridis_c(name = "Age at BMT") +
   #scale_color_manual(values = c(7, 2, 4), name = NULL, labels=c("DP1", "FoxP3- SP4", "FoxP3+ SP4")) +
-  scale_y_log10(limits = c(1e5, 1e8), breaks = c(1e4, 1e5, 1e6,1e7)) +
-  scale_x_continuous(limits = c(60, 600), trans = "log10", breaks = c(75, 150, 300, 600)) + 
+  scale_y_log10(limits = c(1e4, 2e8), breaks = c(1e4, 1e6, 1e8)) +
+  scale_x_continuous(limits = c(60, 500), trans = "log10", breaks = c(75, 150, 300, 600)) + 
   labs(x = "Host age (days)", y = NULL, title = "Total cell counts") +
   facet_wrap(.~ Pop_of_interest) +
   theme_bw() + myTheme #+ theme(legend.position = c(0.12, 0.25), legend.background = element_blank())
@@ -267,8 +297,8 @@ Treg_join %>%
   write.csv(file = "data/Counts_naiTreg.csv", row.names = FALSE)
 
 Treg_fd_Norm %>%
-  mutate(Periphery = round(Nfd_naiveTregs_periph, 4),
-         Thymus = round(Nfd_naiveTregs_thy, 4)) %>%
+  mutate(Periphery = round(naiveTregs_Nfd_periph, 4),
+         Thymus = round(naiveTregs_Nfd_periph, 4)) %>%
   select(-contains("Nfd")) %>%
   write.csv(file = "data/Nfd_naiTreg.csv", row.names = FALSE)
 
