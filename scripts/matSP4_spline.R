@@ -17,13 +17,16 @@ SP4_counts_df <- read_csv("data/Counts_thymicSource.csv") %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
                              ifelse(age.at.BMT <= 88, 'agegroup2',
                                     'agegroup3')))
+
 SP4_chimerism_df <- read_csv("data/Chimerism_thymicSource.csv") %>%
   rename(SP4_chi = FoxP3_Neg_SP4) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
                              ifelse(age.at.BMT <= 88, 'agegroup2',
                                     'agegroup3'))) %>%
   group_by(ageBMT_bin) %>%
-  mutate(MeanAgeBMT = mean(age.at.BMT))
+  mutate(MeanAgeBMT = mean(age.at.BMT)) %>%
+  filter(mouse.ID != 213374,
+         mouse.ID != 202893)
 
 SP4_donorki67_df <- read_csv("data/donorKi67_thymicSource.csv") %>%
   rename(SP4_ki = FoxP3_Neg_SP4) %>%
@@ -39,14 +42,14 @@ SP4_hostki67_df <- read_csv("data/hostKi67_thymicSource.csv") %>%
 
 ## vectors depicting timeseq for predictions 
 timeseq <- seq(63, 450)  ## host age
-dpt_seq <- seq(10, 300)   ## days post BMT
+dpt_seq <- seq(14, 300)   ## days post BMT
   
 
 ## fd_fit
 ## phenomenological function
 chi_spline <- function(Time, chiEst, qEst){
-  Chi = ifelse((Time - 10) < 0, 0,
-               chiEst * (1-exp(-qEst * (Time - 10))))
+  Chi = ifelse((Time - 14) < 0, 0,
+               chiEst * (1-exp(-qEst * (Time - 14))))
   return(Chi)
 }
 
@@ -58,9 +61,12 @@ SP4_chi_pars <- coef(SP4_chi_nlm)
 
 # prediction
 SP4chi_fit <- data.frame(dpt_seq, "y_sp" = chi_spline(dpt_seq, SP4_chi_pars[1], SP4_chi_pars[2]))
+SP4chi_fit_m <- data.frame(dpt_seq, "y_sp" = chi_spline(dpt_seq, 0.8, SP4_chi_pars[2]))
 ggplot() + 
-  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=SP4_chi), col=4, size =2) +
+  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=SP4_chi, col=ageBMT_bin), size =2) +
   geom_line(data = SP4chi_fit, aes(x = dpt_seq , y = y_sp), col=4, size =1) + 
+  #geom_line(data = SP4chi_fit_m, aes(x = dpt_seq , y = y_sp), col=4, size =1) + 
+  #geom_text(data = SP4_chimerism_df, aes(x = age.at.S1K-age.at.BMT , y = SP4_chi, label=mouse.ID), col=4, size =4) + 
   ylim(0,1) + #scale_x_log10(limits=c(10, 750)) +
   labs(title = 'Donor fraction in FoxP3 negative SP4 cells',  y=NULL,  x = 'Days post BMT') 
 

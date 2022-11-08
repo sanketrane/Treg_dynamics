@@ -164,10 +164,6 @@ Treg_hostKi67 <- readxl::read_excel(path = "data/master_doc.xlsx", sheet = 8)  %
            (Spleen_memoryTregs + LN_memoryTregs))%>%
   select(-contains('fd'),  -contains('spl'), -contains('ln'), -contains('Thymic'))
 
-
-
-
-
 ####### PLots ########
 
 ## open graphics device to save plots
@@ -264,16 +260,19 @@ source_join %>%
   theme_bw() + myTheme #+ theme(legend.position = c(0.12, 0.25), legend.background = element_blank())
 
 Treg_donorKi67 %>%
-  rename(Periphery = Ki67_naiveTregs_periph,
-         Thymus = Ki67_naiveTregs_thy) %>%
-  gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Donor_Ki67") %>%
-  ggplot(aes(x = time.post.BMT, y = Donor_Ki67)) +
-  geom_point(aes(col=age.at.BMT), size=2) +
-  scale_color_viridis_c(name = "Host age at BMT") + ylim(0, 0.4) +
-  #scale_color_manual(values = c(7, 2, 4), name = NULL, labels=c("DP1", "FoxP3- SP4", "FoxP3+ SP4")) +
-  labs(x = "Days post BMT", y = NULL, title = "Ki67 fractions in donor naive Tregs") +
-  facet_wrap(.~ Pop_of_interest) +
-  theme_bw() + myTheme
+  left_join(Treg_hostKi67, 
+            by = c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), suffix= c( ".donor", ".host")) %>%
+  gather(-c("mouse.ID", "time.post.BMT", "age.at.S1K", "age.at.BMT"), key = "Pop_of_interest", value = "Propn_Ki67") %>%
+  mutate(Tissue_location = ifelse(grepl("periph", Pop_of_interest), "Periphery", "Thymus"),
+         subcomp = ifelse(grepl("donor", Pop_of_interest), "Donor", "Host"),
+         subpop = ifelse(grepl("naive", Pop_of_interest), "Naive", "Memory")) %>%
+  ggplot(aes(x = time.post.BMT, y = Propn_Ki67)) +
+  geom_point(aes(col=subcomp), size=2) + ylim(0, 0.6) +
+  scale_color_manual(values = c(7, 2, 4), name = NULL) +
+  labs(x = "Days post BMT", y = NULL, title = NULL) +
+  facet_grid(Tissue_location~ subpop) +
+  theme_bw() + myTheme + theme(legend.position = c(0.92, 0.9), legend.background = element_blank(),
+                               strip.background.y = element_rect(fill="#F783A5"))
 
 Treg_hostKi67 %>%
   rename(Periphery = Ki67_naiveTregs_periph,
@@ -299,17 +298,19 @@ Treg_join %>%
 Treg_fd_Norm %>%
   mutate(Periphery = round(naiveTregs_Nfd_periph, 4),
          Thymus = round(naiveTregs_Nfd_periph, 4)) %>%
-  select(-contains("Nfd")) %>%
+  select(-contains("Nfd"), -contains('memory')) %>%
   write.csv(file = "data/Nfd_naiTreg.csv", row.names = FALSE)
 
 Treg_hostKi67 %>%
   mutate(Periphery = round(Ki67_naiveTregs_periph, 4),
          Thymus = round(Ki67_naiveTregs_thy, 4)) %>%
+  select(-contains("Ki67"))  %>%
   write.csv(file = "data/hostKi67_naiTreg.csv", row.names = FALSE)
 
 Treg_donorKi67 %>%
   mutate(Periphery = round(Ki67_naiveTregs_periph, 4),
          Thymus = round(Ki67_naiveTregs_thy, 4)) %>%
+  select(-contains("Ki67"))  %>%
   write.csv(file = "data/donorKi67_naiTreg.csv", row.names = FALSE)
   
 source_join %>%
