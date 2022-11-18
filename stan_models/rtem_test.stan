@@ -1,5 +1,5 @@
 functions{
-//spline 1
+ //spline 1
  // Timecourse of thymic CD4 SP population -- changes with time
  real sp_numbers(real time) {
    real t0 = 49.0;     // mean mouse age at BMT for the first ageBMT bin
@@ -32,9 +32,8 @@ functions{
    return value;
  }
 
-
-// spline3 --
-// proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
+ // spline3 --
+ // proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
  real donor_eps_spline(real time){
    real t0 = 49.0;     // mean mouse age at BMT for the first ageBMT bin
   //parameters estimated from spline fit to the timecourse of ki67 fraction in the donor-derived FoxP3 negative SP4 T cells
@@ -99,7 +98,7 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   return dydt;
 }
 
-real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
+ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
     real y_solve[16];
     real params[9];
     params[1:8] = parms[1:8];
@@ -108,7 +107,7 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
     return y_solve;
   }
 
-real[,] solve_ode_chi(real[] solve_time, real[] ageAtBMT, real[] init_cond, real[] parms){
+ real[,] solve_ode_chi(real[] solve_time, real[] ageAtBMT, real[] init_cond, real[] parms){
     int numdim = size(solve_time);
     real y_solve[numdim, 16];
     for (i in 1:numdim) {
@@ -116,4 +115,99 @@ real[,] solve_ode_chi(real[] solve_time, real[] ageAtBMT, real[] init_cond, real
     }
     return y_solve;
   }
-}
+
+  vector math_reduce(vector global_params, vector local_params, real[] x_r, int[] x_i){
+    // data for each shard
+    int n = size(x_i); // n = 1
+    real solve_time[n] = x_r[1:n];
+    int ageAtBMT[n] = x_i[1:n];                          // time zero -- for chimeras age at BMT
+    real tb_time[n];
+
+    //params
+    real y1_0 = global_params[9]; real y2_0 = global_params[10];  real y3_0 = global_params[11];
+    real y4_0 = global_params[12]; real y5_0 = global_params[13]; real y6_0 = global_params[14];
+    real y7_0 = global_params[15]; real y8_0 = global_params[16];
+
+    real init_cond[16];
+
+    // ODE solution -- predictions for the observed timecourse
+    real chi_solve[n, 16];
+
+    real counts_thy[n]; real counts_per[n]; real donor_counts_thy[n]; real donor_counts_per[n];
+    real host_counts_thy[n]; real host_counts_per[n]; real donor_ki_thy[n]; real donor_ki_per[n];
+    real host_ki_thy[n]; real host_ki_per[n];
+
+    vector[8*n] y_mean_stacked;
+
+    // ODE solution -- predictions for the observed timecourse
+    init_cond[1] = y1_0; init_cond[2] = y2_0; init_cond[3] = y3_0; init_cond[4] = y4_0;
+    init_cond[5] = y5_0; init_cond[6] = y6_0; init_cond[7] = y7_0; init_cond[8] = y8_0;
+    init_cond[9] =  0; init_cond[10] = 0; init_cond[11] = 0; init_cond[12] = 0;
+    init_cond[13] = 0; init_cond[14] = 0; init_cond[15] = 0; init_cond[16] = 0;
+
+    for (i in 1:n){
+      tb_time[i] = ageAtBMT[i]/1.0;
+    }
+
+    // each shard has a single datpoint so its unique ****
+    // PDE solution for chimera dataset -- x_r = data time and x_i = time at BMT
+      chi_solve = solve_ode_chi(solve_time, tb_time, init_cond, to_array_1d(global_params));
+
+      for (i in 1:n){
+        counts_thy[i] = chi_solve[i, 1] + chi_solve[i, 2] + chi_solve[i, 7] + chi_solve[i, 8] + chi_solve[i, 9] + chi_solve[i, 10] + chi_solve[i, 15] + chi_solve[i, 16];
+        counts_per[i] = chi_solve[i, 3] + chi_solve[i, 4] + chi_solve[i, 5] + chi_solve[i, 6] + chi_solve[i, 11] + chi_solve[i, 12] + chi_solve[i, 13] + chi_solve[i, 14];
+        donor_counts_thy[i] = chi_solve[i, 9] + chi_solve[i, 10] + chi_solve[i, 15] + chi_solve[i, 16];
+        donor_counts_per[i] = chi_solve[i, 11] + chi_solve[i, 12] + chi_solve[i, 13] + chi_solve[i, 14];
+        host_counts_thy[i] = chi_solve[i, 1] + chi_solve[i, 2] + chi_solve[i, 7] + chi_solve[i, 8];
+        host_counts_per[i] = chi_solve[i, 3] + chi_solve[i, 4] + chi_solve[i, 5] + chi_solve[i, 6];
+        donor_ki_thy[i] = (chi_solve[i, 9] + chi_solve[i, 15])/donor_counts_thy[i];
+        donor_ki_per[i] = (chi_solve[i, 11] + chi_solve[i, 13])/donor_counts_thy[i];
+        host_ki_thy[i] = (chi_solve[i, 1] + chi_solve[i, 7])/host_counts_thy[i];
+        host_ki_per[i] = (chi_solve[i, 3] + chi_solve[i, 5])/host_counts_per[i];
+
+        y_mean_stacked[8*i - 7] = counts_thy[i];
+        y_mean_stacked[8*i - 6] = counts_per[i];
+        y_mean_stacked[8*i - 5] = donor_counts_thy[i]/(counts_thy[i] * Chi_spline(solve_time[i] - tb_time[i]));
+        y_mean_stacked[8*i - 4] = donor_counts_per[i]/(counts_per[i] * Chi_spline(solve_time[i] - tb_time[i]));
+        y_mean_stacked[8*i - 3] = host_ki_thy[i];
+        y_mean_stacked[8*i - 2] = host_ki_per[i];
+        y_mean_stacked[8*i - 1] = donor_ki_thy[i];
+        y_mean_stacked[8*i - 0] = donor_ki_per[i];
+      }
+
+      return y_mean_stacked;
+    }
+
+    // functions for transformation of fractions in (0,a), where a >=1
+    real logit_inverse(real x){
+       real ans;
+         ans = exp(x)/(1+exp(x));
+         return ans;
+    }
+
+    // functions for transformation of fractions in (0,a), where a >=1
+    real[] asinsqrt_array(real[] x){
+      int ndims = size(x);
+      real answer[ndims];
+      real a = 1.2;
+
+      for (i in 1: ndims){
+        answer[i] = asin(sqrt(x[i])/sqrt(a));
+      }
+      return answer;
+    }
+
+    real asinsqrt_real(real x){
+      real a = 1.2;
+
+      real answer = asin(sqrt(x)/sqrt(a));
+      return answer;
+    }
+
+    real asinsqrt_inv(real x){
+      real a = 1.2;
+
+      real answer = a * (sin(x))^2;
+      return answer;
+    }
+  }

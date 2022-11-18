@@ -48,13 +48,14 @@ dpt_seq <- seq(14, 300)   ## days post BMT
 ## fd_fit
 ## phenomenological function
 chi_spline <- function(Time, chiEst, qEst){
-  Chi = ifelse((Time - 14) < 0, 0,
-               chiEst * (1-exp(-qEst * (Time - 14))))
+  Chi = ifelse((Time - 10) < 0, 0,
+               chiEst * (1-exp(-qEst * (Time - 10))))
   return(Chi)
 }
 
 ## LL function
-SP4_chi_nlm <- nls(SP4_chi ~ chi_spline(age.at.S1K - age.at.BMT, chiEst, qEst),
+logit_transf <- function(x){asin(sqrt(x))}
+SP4_chi_nlm <- nls(logit_transf(SP4_chi) ~ logit_transf(chi_spline(age.at.S1K - age.at.BMT, chiEst, qEst)),
                   data =  SP4_chimerism_df,
                   start = list(chiEst=0.84, qEst=0.1))
 SP4_chi_pars <- coef(SP4_chi_nlm)
@@ -65,7 +66,7 @@ SP4chi_fit_m <- data.frame(dpt_seq, "y_sp" = chi_spline(dpt_seq, 0.8, SP4_chi_pa
 ggplot() + 
   geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=SP4_chi, col=ageBMT_bin), size =2) +
   geom_line(data = SP4chi_fit, aes(x = dpt_seq , y = y_sp), col=4, size =1) + 
-  #geom_line(data = SP4chi_fit_m, aes(x = dpt_seq , y = y_sp), col=4, size =1) + 
+  geom_line(data = SP4chi_fit_m, aes(x = dpt_seq , y = y_sp), col=2, size =1) + 
   #geom_text(data = SP4_chimerism_df, aes(x = age.at.S1K-age.at.BMT , y = SP4_chi, label=mouse.ID), col=4, size =4) + 
   ylim(0,1) + #scale_x_log10(limits=c(10, 750)) +
   labs(title = 'Donor fraction in FoxP3 negative SP4 cells',  y=NULL,  x = 'Days post BMT') 

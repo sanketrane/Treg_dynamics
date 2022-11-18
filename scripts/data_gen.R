@@ -62,8 +62,8 @@ numObs2 <- length(data_time_chi)
 numObs3 <- length(data_time_donorki)
 numObs4 <- length(data_time_hostki)
 n_solve <- length(solve_time)
-n_shards <- n_solve/3
-dpBMT <- counts_data$age.at.S1K - counts_data$age.at.BMT
+n_shards <- n_solve/1
+dpBMT <- unique_times_counts$age.at.S1K - unique_times_counts$age.at.BMT
 ageAtBMT <- unique_times_counts$age.at.BMT
 counts_per <- counts_data$Periphery
 counts_thy <- counts_data$Thymus
@@ -74,6 +74,7 @@ ki_donor_thy <- donorki_data$Thymus
 ki_host_per <- hostki_data$Periphery
 ki_host_thy <- hostki_data$Thymus
 
+logit_transf <- function(x){log(x/(1-x))}
 
 ## defining the function to calculate mode of a vector series
 getmode <- function(v) {
@@ -84,16 +85,16 @@ getmode <- function(v) {
 counts_data %>%
   group_by(ageBMT_bin) %>%
   summarise('modevalue' = getmode(age.at.BMT),
-            'ub' = max(age.at.S1K),
-            'lb' = min(age.at.S1K),
+            'ub' = max(age.at.BMT),
+            'lb' = min(age.at.BMT),
             'counts' = n())
 
 
 # time sequence for predictions specific to age bins within the data
-ts_pred1 <- 10^seq(log10(45), log10(200), length.out = 300)
-ts_pred2 <- 10^seq(log10(66), log10(330), length.out = 300)
-ts_pred3 <- 10^seq(log10(76), log10(350), length.out = 300)
-ts_pred4 <- 10^seq(log10(118), log10(450), length.out = 300)
+ts_pred1 <- 10^seq(log10(66), log10(200), length.out = 300)
+ts_pred2 <- 10^seq(log10(91), log10(330), length.out = 300)
+ts_pred3 <- 10^seq(log10(90), log10(350), length.out = 300)
+ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
 tb_pred1 <- rep(45, 300)
 tb_pred2 <- rep(66, 300)
 tb_pred3 <- rep(76, 300)
@@ -107,7 +108,7 @@ rstan::stan_rdump(c("numObs1", "numObs2", "numObs3", "numObs4", "n_solve", "n_sh
              "counts_thy",  "Nfd_thy", "ki_donor_thy", "ki_host_thy",
              "ts_pred1", "ts_pred2", "ts_pred3", "ts_pred4",
              "tb_pred1", "tb_pred2", "tb_pred3",  "tb_pred4",  "numPred"),
-           file = file.path('data', paste0('Treg_data',".Rdump")))
+           file = file.path('data', paste0('Treg_data_S33',".Rdump")))
 
 
 
