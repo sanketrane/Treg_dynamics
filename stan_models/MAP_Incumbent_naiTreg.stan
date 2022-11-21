@@ -71,29 +71,75 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   dydt[5] = alpha * y[7] + rho_I * (2 * y[6] + y[5]) - (kloss + beta + delta_I) * y[5];
   // Peripheral ki lo Incumbent
   dydt[6] = alpha * y[8] + kloss * y[5] - (rho_I + beta + delta_I) * y[6];
-  // Thymic ki hi mature
+  // Thymic ki hi Incumbent
   dydt[7] = beta * y[5] + rho_I * (2 * y[8] + y[7]) - (kloss + alpha + delta_I) * y[7];
-  // Thymic ki lo mature
+  // Thymic ki lo Incumbent
   dydt[8] = beta * y[6] + kloss * y[7] - (rho_I + alpha + delta_I) * y[8];
 
   // Donor naive Tregs
-  // Thymic ki  hi tranistionals
+  // Thymic ki  hi displaceable
   dydt[9] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_D * (2 * y[10] + y[9]) - (kloss + alpha + delta_D) * y[9];
-  // Thymic ki lo tranistionals
+  // Thymic ki lo displaceable
   dydt[10] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time)) + kloss * y[9] - (rho_D + alpha + delta_D) * y[10];
-  // Peripheral ki hi tranistionals
+  // Peripheral ki hi displaceable
   dydt[11] = alpha * y[9] + rho_D * (2 * y[12] + y[11]) - (kloss + beta + delta_D) * y[11];
-  // Peripheral ki lo tranistionals
+  // Peripheral ki lo displaceable
   dydt[12] = alpha * y[10] + kloss * y[11] - (rho_D + beta + delta_D) * y[12];
   return dydt;
 }
 
- real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
-    real y_solve[12];
+// solving for total counts of thymic and peripheral naive Tregs at time of BMT assuming the youngest animal as the t0
+// these counts form the initial conditions for other recipients N(0) = N_host(0)
+real[] solve_init(real ageAtBMT,
+  real[] init_cond,                          // initial conditions at BMT in the youngest mouse
+  real[] parms){
+
+    real ta = 40;                            // age at BMT for the youngest host
+    real y_init[2, 12];
+    real params_init[8];
+
+    params_init[1:7] = parms[1:7];
+    params_init[8] = ta;
+
+    y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
+    y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
+    if (ageAtBMT==40) {
+      y_init[2] = init_cond;
+    } else {
+      y_init[2] = to_array_1d(integrate_ode_rk45(shm_chi, init_cond, ta, rep_array(ageAtBMT, 1), params_init, {0.0}, {0}));
+    }
+    return y_init[2];
+}
+
+real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
+     real y_solve[12];
     real params[8];
+
+    real y0[12];
+    real init_tb[12];                         // init conditions at the mean age of BMT for the group
+
+    //solution for the initial conditions at the mean age of BMT for the group
+    y0 = solve_init(ageAtBMT, init_cond, parms);
+
+    // init conditions at the BMT
+    init_tb[1] = y0[1] + y0[9];
+    init_tb[2] = y0[2] + y0[10];
+    init_tb[3] = y0[3] + y0[11];                               //at tbmt - all cells are host
+    init_tb[4] = y0[4] + y0[12];
+    init_tb[5] = y0[5];
+    init_tb[6] = y0[6];
+    init_tb[7] = y0[7];
+    init_tb[8] = y0[8];
+    init_tb[9] = 0.0;                               //at tbmt - donor population = 0
+    init_tb[10] = 0.0;
+    init_tb[11] = 0.0;
+    init_tb[12] = 0.0;
+
     params[1:7] = parms[1:7];
-    params[8] = ageAtBMT;                      // age at BMT
-    y_solve = to_array_1d(integrate_ode_rk45(shm_chi, init_cond, ageAtBMT, rep_array(solve_time, 1), params, {0.0}, {0}));
+    params[8] = ageAtBMT;                                           // age at BMT
+
+    y_solve = to_array_1d(integrate_ode_rk45(shm_chi, init_tb, ageAtBMT, rep_array(solve_time, 1), params, {0.0}, {0}));
+
     return y_solve;
   }
 

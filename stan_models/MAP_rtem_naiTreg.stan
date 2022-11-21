@@ -98,12 +98,58 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   return dydt;
 }
 
- real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
-    real y_solve[16];
+// solving for total counts of thymic and peripheral naive Tregs at time of BMT assuming the youngest animal as the t0
+// these counts form the initial conditions for other recipients N(0) = N_host(0)
+real[] solve_init(real ageAtBMT,
+  real[] init_cond,                          // initial conditions at BMT in the youngest mouse
+  real[] parms){
+
+    real ta = 40;                            // age at BMT for the youngest host
+    real y_init[2, 16];
+    real params_init[9];
+
+    params_init[1:8] = parms[1:8];
+    params_init[9] = ta;
+
+    y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
+    if (ageAtBMT==40) {
+      y_init[2] = init_cond;
+    } else {
+      y_init[2] = to_array_1d(integrate_ode_rk45(shm_chi, init_cond, ta, rep_array(ageAtBMT, 1), params_init, {0.0}, {0}));
+    }
+
+    return y_init[2];
+}
+
+real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
+     real y_solve[16];
     real params[9];
+
+    real y0[16];
+    real init_tb[16];                         // init conditions at the mean age of BMT for the group
+
+    //solution for the initial conditions at the mean age of BMT for the group
+    y0 = solve_init(ageAtBMT, init_cond, parms);
+
+    // init conditions at the BMT
+    //at tbmt - all cells are host
+    init_tb[1] = y0[1] + y0[9];
+    init_tb[2] = y0[2] + y0[10];
+    init_tb[3] = y0[3] + y0[11];
+    init_tb[4] = y0[4] + y0[12];
+    init_tb[5] = y0[5] + y0[13];
+    init_tb[6] = y0[6] + y0[14];
+    init_tb[7] = y0[7] + y0[15];
+    init_tb[8] = y0[8] + y0[16];
+    //at tbmt - donor population = 0
+    init_tb[9] = 0.0;   init_tb[10] = 0.0;    init_tb[11] = 0.0;    init_tb[12] = 0.0;
+    init_tb[13] = 0.0;   init_tb[14] = 0.0;    init_tb[15] = 0.0;    init_tb[16] = 0.0;
+
     params[1:8] = parms[1:8];
-    params[9] = ageAtBMT;                      // age at BMT
-    y_solve = to_array_1d(integrate_ode_rk45(shm_chi, init_cond, ageAtBMT, rep_array(solve_time, 1), params, {0.0}, {0}));
+    params[9] = ageAtBMT;                                           // age at BMT
+
+    y_solve = to_array_1d(integrate_ode_rk45(shm_chi, init_tb, ageAtBMT, rep_array(solve_time, 1), params, {0.0}, {0}));
+
     return y_solve;
   }
 

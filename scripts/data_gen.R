@@ -64,7 +64,7 @@ numObs4 <- length(data_time_hostki)
 n_solve <- length(solve_time)
 n_shards <- n_solve/1
 dpBMT <- unique_times_counts$age.at.S1K - unique_times_counts$age.at.BMT
-ageAtBMT <- unique_times_counts$age.at.BMT
+ageAtBMT <- unique_times_counts$age.at.BMT %>% unique()
 counts_per <- counts_data$Periphery
 counts_thy <- counts_data$Thymus
 Nfd_per <- Nfd_data$Periphery
