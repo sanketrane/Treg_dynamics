@@ -207,7 +207,7 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
         host_counts_thy[i] = chi_solve[i, 1] + chi_solve[i, 2] + chi_solve[i, 7] + chi_solve[i, 8];
         host_counts_per[i] = chi_solve[i, 3] + chi_solve[i, 4] + chi_solve[i, 5] + chi_solve[i, 6];
         donor_ki_thy[i] = (chi_solve[i, 9] + chi_solve[i, 15])/donor_counts_thy[i];
-        donor_ki_per[i] = (chi_solve[i, 11] + chi_solve[i, 13])/donor_counts_thy[i];
+        donor_ki_per[i] = (chi_solve[i, 11] + chi_solve[i, 13])/donor_counts_per[i];
         host_ki_thy[i] = (chi_solve[i, 1] + chi_solve[i, 7])/host_counts_thy[i];
         host_ki_per[i] = (chi_solve[i, 3] + chi_solve[i, 5])/host_counts_per[i];
 

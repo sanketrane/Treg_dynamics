@@ -6,22 +6,24 @@ library(rstan)
 library(tidyverse)
 ####################################################################################
 ## testing models from stan
-stanmodel_file <- file.path("stan_models", "MAP_rtem_naiTreg.stan")
+stanmodel_file <- file.path("stan_models", "MAP_Incumbent_thy2.stan")
 expose_stan_functions(stanmodel_file)
 
 ts_seq <- round(sample(seq(70, 100, length.out = 10), 3, replace = FALSE)) %>% sort()
 agebmtseq <- rep(49, length(ts_seq))
-init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
-               0,0,0,0,0,0,0,0)
+#init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
+#               0,0,0,0,0,0,0,0)
 #init_cond <- c(exp(8.5), exp(10), exp(8.75), exp(12.4), exp(10.5), exp(12), exp(9.9), exp(11.14),
-#               0,0,0,0)
+  #             0,0,0,0)
+init_cond <- c(exp(8.5), exp(10), exp(8.75), exp(12.4),
+               0,0)
 params <- c(0.002, 0.0003, 0.15, 0.003, 0.03, 0.004, 0.03, 0.01)
 
 global_parms <- c(params,init_cond)
 ode_sol <- solve_ode_chi(ts_seq, agebmtseq, init_cond, params)
-math_reduce(global_parms, local_params = c(0), x_r = 90, x_i = 80)
+math_reduce(global_parms, local_params = c(0), x_r = 90, x_i = 79)
 
-data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
+#data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
 
 # time sequence for predictions specific to age bins within the data
 ts_pred1 <- 10^seq(log10(66), log10(200), length.out = 300)

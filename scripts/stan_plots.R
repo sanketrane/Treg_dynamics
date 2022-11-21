@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "rtem"
+modelName <- "Incumbent"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -47,28 +47,32 @@ counts_data <- read.csv(counts_file) %>%
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) 
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) %>%
+  gather(c(Thymus, Periphery), key='location', value = 'total_counts')
 
 Nfd_file <- file.path("data", "Nfd_naiTreg.csv")
 Nfd_data <- read.csv(Nfd_file) %>% 
   arrange(age.at.S1K)%>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))%>%
+  gather(c(Thymus, Periphery), key='location', value = 'Nfd')
 
 hostki_file <- file.path("data", "hostKi67_naiTreg.csv")
 hostki_data <- read.csv(hostki_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))%>%
+  gather(c(Thymus, Periphery), key='location', value = 'host_ki')
 
 donorki_file <- file.path("data", "donorKi67_naiTreg.csv")
 donorki_data <- read.csv(donorki_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))%>%
+  gather(c(Thymus, Periphery), key='location', value = 'donor_ki')
 
 # ################################################################################################
 # calculating PSIS-L00-CV for the fit
@@ -121,88 +125,67 @@ write.csv(out_table, file = file.path(outputDir, paste0('params_', modelName, ".
 ################################################################################################
 ## posterior predictive distributions
 
+source('scripts/stan_extract_forplotting.R')
+
+legn_labels <- c('6-8', '8-10', '10-12', '12-25')
+
+
+pdf(file = file.path(outputDir, paste(modelName,"MainPlots%03d.pdf", sep = "")),
+    width = 10, height = 4.5, onefile = F)
+
+
 ggplot() +
-  geom_ribbon(data = Counts_thy_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.2)+
-  geom_line(data = Counts_thy_pred, aes(x = timeseries, y = median, color = ageBMT_bin), size=1.2) +
-  geom_point(data = counts_data, aes(x = age.at.S1K, y = Thymus, color = ageBMT_bin), size=2) +
-  labs(title=paste('Total counts of thymic naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  geom_ribbon(data = Counts_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.2)+
+  geom_line(data = Counts_pred, aes(x = timeseries, y = median, color = ageBMT_bin), size=1.2) +
+  geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
+  labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
   scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
-  scale_y_continuous(limits = c(5e3, 5e5), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
-  guides(fill = 'none') + myTheme
+  scale_y_continuous(limits = c(5e3, 5e6), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
+  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
+  guides(fill = 'none') + myTheme 
 
 
-ggplot() +
-  geom_ribbon(data = Counts_per_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.2)+
-  geom_line(data = Counts_per_pred, aes(x = timeseries, y = median, color = ageBMT_bin), size=1.2) +
-  geom_point(data = counts_data, aes(x = age.at.S1K, y = Periphery, color = ageBMT_bin), size=2) +
-  labs(title=paste('Total counts of peripheral naive Tregs'),  y=NULL, x= "Host age (days)") + 
-  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
-  scale_y_continuous(limits = c(1e5, 1e7), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
-  guides(fill = 'none') + myTheme
-
-# normalised donr fractions
+# normalised donor fractions
 
 ggplot() +
-  geom_hline(aes(yintercept = 1), color = "#d11100", linetype = 2, size=1.2)+
-  geom_ribbon(data = Y2pred, aes(x = timeseries, ymin = lb, ymax = ub), fill = "#0099cc", alpha = 0.2)+
-  geom_line(data = Y2pred, aes(x = timeseries, y = median), color = "#1e2366", size=1.2) +
-  geom_point(data = NTregThy_Nfd, aes(x = time.post.BMT, y = Nfd), color = "#1e2366", size=2) +
-  labs(x = "Days post BMT", y = NULL, title = "Chimerism in thymic naive T regs normalised to chimersim in thymic SP4 T cells") +
-  scale_x_continuous(limits = c(0, 300), breaks = c(0,100,200,300))+
-  scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0))+ 
-  guides(color = FALSE)+ myTheme
+  geom_ribbon(data = Nfd_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.2)+
+  geom_line(data = Nfd_pred, aes(x = timeseries, y = median, color = ageBMT_bin), size=1.2) +
+  geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
+  labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
+  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
+  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
+  scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) + 
+  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
+  guides(fill='none')+ myTheme
 
-
-Y3pred <- as.data.frame(fit, pars = "y3_mean_pred") %>%
-  gather(factor_key = TRUE) %>%
-  group_by(key) %>%
-  summarize(lb = quantile(value, probs = 0.045),
-            median = quantile(value, probs = 0.5),
-            ub = quantile(value, probs = 0.955)) %>%
-  bind_cols("timeseries" = ts_pred)
-
-Y3pred <- Y3pred%>%
-  filter(timeseries >= 10)%>% filter(timeseries <= 300)
-
-
+# donor Ki67 fractions
 
 ggplot() +
-  # geom_ribbon(data = Cpred, aes(x = timeseries, ymin = lb, ymax=ub), fill = '#0099cc', alpha = 0.2) +
-  geom_ribbon(data = Y3pred, aes(x = timeseries, ymin = lb, ymax = ub), fill = "#0099cc", alpha = 0.2)+
-  geom_line(data = Y3pred, aes(x = timeseries, y = median), color = "#1e2366", size=1.2) +
-  geom_point(data = NTregPer_counts, aes(x = time.post.BMT, y = total_counts), col = 'darkblue', size=2) +
-  labs(title=paste('Total counts of thymic naive Tregs'),  y=NULL, x= "Days post BMT") + 
-  scale_x_continuous(limits = c(10, 300) , trans="log10", breaks=c(10, 30, 100, 300))+
-  scale_y_continuous(limits = c(1e5, 5e6), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
-  guides(color = FALSE) + myTheme
+  geom_ribbon(data = ki_donor_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = ageBMT_bin), alpha = 0.2)+
+  geom_line(data = ki_donor_pred, aes(x = timeseries, y = median*100, color = ageBMT_bin), size=1.2) +
+  geom_point(data = donorki_data, aes(x = age.at.S1K, y = donor_ki*100, color = ageBMT_bin), size=2) +
+  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
+  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
+  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
+  scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
+  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
+  guides(fill='none')+ myTheme
 
-
-# normalised donr fractions
-Y4pred <- as.data.frame(fit, pars = "y4_mean_pred") %>%
-  gather(factor_key = TRUE) %>%
-  group_by(key) %>%
-  summarize(lb = quantile(value, probs = 0.045),
-            median = quantile(value, probs = 0.5),
-            ub = quantile(value, probs = 0.955)) %>%
-  bind_cols("timeseries" = ts_pred)
-
-Y4pred <- Y4pred%>%
-  filter(timeseries >= 0)%>% filter(timeseries <= 300)
-
+# Host Ki67 fractions
 
 ggplot() +
-  geom_hline(aes(yintercept = 1), color = "#d11100", linetype = 2, size=1.2)+
-  geom_ribbon(data = Y4pred, aes(x = timeseries, ymin = lb, ymax = ub), fill = "#0099cc", alpha = 0.2)+
-  geom_line(data = Y4pred, aes(x = timeseries, y = median), color = "#1e2366", size=1.2) +
-  geom_point(data = NTregPer_Nfd, aes(x = time.post.BMT, y = Nfd), color = "#1e2366", size=2) +
-  labs(x = "Days post BMT", y = NULL, title = "Chimerism in peripheral naive T regs normalised to chimersim in thymic SP4 T cells") +
-  scale_x_continuous(limits = c(0, 300), breaks = c(0,100,200,300))+
-  scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0))+ 
-  guides(color = FALSE)+ myTheme
-
+  geom_ribbon(data = ki_host_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = ageBMT_bin), alpha = 0.2)+
+  geom_line(data = ki_host_pred, aes(x = timeseries, y = median*100, color = ageBMT_bin), size=1.2) +
+  geom_point(data = hostki_data, aes(x = age.at.S1K, y = host_ki*100, color = ageBMT_bin), size=2) +
+  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in host naive Tregs") +
+  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
+  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
+  scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
+  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
+  guides(fill='none')+ myTheme
 
 dev.off()
-
 
 
 
@@ -210,36 +193,13 @@ dev.off()
 ## open graphics device 
 ## saving  plots for quality control 
 pdf(file = file.path(outputDir, paste(modelName,"Plots%03d.pdf", sep = "")),
-    width = 8, height = 5, onefile = F)
+    width = 12, height = 5, onefile = F)
 
 pairs(fit, pars = parametersToPlot)
 
 options(bayesplot.base_size = 15,
         bayesplot.base_family = "sans")
 bayesplot::color_scheme_set(scheme = "viridis")
-myTheme <- theme(text = element_text(size = 12), axis.text = element_text(size = 12), axis.title =  element_text(size = 12, face = "bold"),
-                 plot.title = element_text(size=12, face = 'bold',  hjust = 0.5), legend.text = element_text(size=12),
-                 legend.title = element_text(size = 12))
-
-# setting ggplot theme for rest fo the plots
-theme_set(theme_bw())
-
-fancy_scientific <- function(l) {
-  # turn in to character string in scientific notation
-  l <- format(l, scientific = TRUE)
-  # quote the part before the exponent to keep all the digits
-  l <- gsub("^(.*)e", "'\\1'e", l)
-  # remove + after exponent, if exists. E.g.: (e^+2 -> e^2)
-  l <- gsub("e\\+","e",l)  
-  # turn the 'e' into plotmath format
-  l <- gsub("e", "%*%10^", l)
-  # convert 1x10^ or 1.000x10^ -> 10^
-  l <- gsub("\\'1[\\.0]*\\'\\%\\*\\%", "", l)
-  # return this as an expression
-  parse(text=l)
-}
-
-log10minorbreaks=as.numeric(1:10 %o% 10^(4:8))
 
 rhats <- rhat(fit, pars = parametersToPlot)
 mcmc_rhat(rhats) + yaxis_text() + myTheme
@@ -254,3 +214,6 @@ mcmcHistory(fit, pars = parametersToPlot, nParPerPage = 4, myTheme = myTheme)
 
 mcmc_dens_overlay(posterior, parametersToPlot)
 mcmc_dens(posterior, parametersToPlot) + myTheme
+
+
+dev.off()
