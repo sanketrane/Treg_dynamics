@@ -91,9 +91,9 @@ counts_data %>%
 
 
 # time sequence for predictions specific to age bins within the data
-ts_pred1 <- 10^seq(log10(66), log10(200), length.out = 300)
-ts_pred2 <- 10^seq(log10(91), log10(330), length.out = 300)
-ts_pred3 <- 10^seq(log10(90), log10(350), length.out = 300)
+ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
+ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
+ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
 ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
 tb_pred1 <- rep(45, 300)
 tb_pred2 <- rep(66, 300)

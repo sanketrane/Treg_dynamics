@@ -46,14 +46,13 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   real rho_D = parms[2];
   real delta_D = parms[3];
   real rho_I = parms[4];
-  real delta_I = parms[5];
 
   real dydt[6];
   real kloss  = 1/3.5;            //rate of loss of ki67
   real eps_host = 0.326611;      // Mean Ki67 hi fraction in host-BM-derived FoxP3 negative Sp4 T cells
 
   // age of BMT in each recipient
-  real ageAtBMT = parms[6];
+  real ageAtBMT = parms[5];
 
   // model that assumes that tranistionals divide and die at different rates than mature naive T cells
   // Host naive Tregs
@@ -62,9 +61,9 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   // Thymic ki lo displaceable
   dydt[2] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * (1 - eps_host) + kloss * y[1] - (rho_D + delta_D) * y[2];
   // Thymic ki hi Incumbent
-  dydt[3] = rho_I * (2 * y[4] + y[3]) - (kloss + delta_I) * y[3];
+  dydt[3] = rho_I * (2 * y[4] + y[3]) - (kloss + rho_I) * y[3];
   // Thymic ki lo Incumbent
-  dydt[4] = kloss * y[3] - (rho_I + delta_I) * y[4];
+  dydt[4] = kloss * y[3] - (rho_I + rho_I) * y[4];
 
   // Donor naive Tregs
   // Thymic ki  hi displaceable
@@ -83,10 +82,10 @@ real[] solve_init(real ageAtBMT,
 
     real ta = 40;                            // age at BMT for the youngest host
     real y_init[2, 6];
-    real params_init[6];
+    real params_init[5];
 
-    params_init[1:5] = parms[1:5];
-    params_init[6] = ta;
+    params_init[1:4] = parms[1:4];
+    params_init[5] = ta;
 
     y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
     y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
@@ -100,7 +99,7 @@ real[] solve_init(real ageAtBMT,
 
 real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
      real y_solve[6];
-    real params[6];
+    real params[5];
 
     real y0[6];
     real init_tb[6];                         // init conditions at the mean age of BMT for the group
@@ -116,8 +115,8 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
     init_tb[5] = 0.0;
     init_tb[6] = 0.0;
 
-    params[1:5] = parms[1:5];
-    params[6] = ageAtBMT;                                           // age at BMT
+    params[1:4] = parms[1:4];
+    params[5] = ageAtBMT;                                           // age at BMT
 
     y_solve = to_array_1d(integrate_ode_rk45(shm_chi, init_tb, ageAtBMT, rep_array(solve_time, 1), params, {0.0}, {0}));
 
@@ -141,8 +140,7 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
     real tb_time[n];
 
     //params
-    real y1_0 = global_params[6]; real y2_0 = global_params[7];  real y3_0 = global_params[8];
-    real y4_0 = global_params[9];
+    real y1_0 = global_params[5]; real y2_0 = global_params[6];  real y3_0 = global_params[7];  real y4_0 = global_params[8];
 
     real init_cond[6];
 
@@ -273,7 +271,6 @@ parameters {
   real<lower= 0, upper= 1> rho_D;
   real<lower= 0, upper= 1> delta_D;
   real<lower= 0, upper= 1> rho_I;
-  real<lower= 0, upper= rho_I> delta_I;
   real<lower= 0> y1_0;
   real<lower= 0> y2_0;
   real<lower= 0> y3_0;
@@ -303,11 +300,10 @@ transformed parameters{
   global_params[2] = rho_D;
   global_params[3] = delta_D;
   global_params[4] = rho_I;
-  global_params[5] = delta_I;
-  global_params[6] =  exp(y1_0);
-  global_params[7] = exp(y2_0);
-  global_params[8] = exp(y3_0);
-  global_params[9] = exp(y4_0);
+  global_params[5] =  exp(y1_0);
+  global_params[6] = exp(y2_0);
+  global_params[7] = exp(y3_0);
+  global_params[8] = exp(y4_0);
 
   // combining the output from all the shards
   y_mean_stacked = map_rect(math_reduce, global_params, local_params, x_r, x_i);
@@ -338,7 +334,6 @@ model{
   rho_D ~ normal(0.005, 0.25);
   delta_D ~ normal(0.01, 0.25);
   rho_I ~ normal(0.01, 0.25);
-  delta_I ~ normal(0.01, 0.25);
   y1_0 ~ normal(9, 2.5);
   y2_0 ~ normal(11, 2.5);
   y3_0 ~ normal(9, 2.5);

@@ -22,6 +22,60 @@ Counts_thy_pred <- as.data.frame(fit, pars = c("counts_thy_mean_pred1", "counts_
          location = "Thymus") 
 
 
+Counts_pred <- rbind(Counts_thy_pred)
+
+
+# Nfd in thymic naive Tregs with 90% envelopes
+Nfd_thy_pred <- as.data.frame(fit, pars = c("Nfd_thy_mean_pred1", "Nfd_thy_mean_pred2",
+                                            "Nfd_thy_mean_pred3", "Nfd_thy_mean_pred4")) %>%
+  gather(factor_key = TRUE) %>%
+  group_by(key) %>%
+  summarize(lb = quantile(value, probs = 0.05),
+            median = quantile(value, probs = 0.5),
+            ub = quantile(value, probs = 0.95))  %>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
+                             ifelse(grepl("pred2", key), "agebin2",
+                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
+         location = "Thymus")   
+
+Nfd_pred <- rbind(Nfd_thy_pred)
+
+
+# Proportion of Ki67hi in donor thymic naive Tregs with 90% envelopes
+ki_donor_thy_pred <- as.data.frame(fit, pars = c("ki_donor_thy_mean_pred1", "ki_donor_thy_mean_pred2",
+                                                 "ki_donor_thy_mean_pred3", "ki_donor_thy_mean_pred4")) %>%
+  gather(factor_key = TRUE) %>%
+  group_by(key) %>%
+  summarize(lb = quantile(value, probs = 0.05),
+            median = quantile(value, probs = 0.5),
+            ub = quantile(value, probs = 0.95)) %>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
+                             ifelse(grepl("pred2", key), "agebin2",
+                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
+         location = "Thymus", 
+         subcomp = 'Donor')   
+
+# Proportion of Ki67hi in host thymic naive Tregs with 90% envelopes
+ki_host_thy_pred <- as.data.frame(fit, pars = c("ki_host_thy_mean_pred1", "ki_host_thy_mean_pred2",
+                                                "ki_host_thy_mean_pred3", "ki_host_thy_mean_pred4")) %>%
+  gather(factor_key = TRUE) %>%
+  group_by(key) %>%
+  summarize(lb = quantile(value, probs = 0.05),
+            median = quantile(value, probs = 0.5),
+            ub = quantile(value, probs = 0.95)) %>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
+                             ifelse(grepl("pred2", key), "agebin2",
+                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
+         location = "Thymus", 
+         subcomp = 'Host')    
+
+
+ki_thy_pred <- rbind(ki_donor_thy_pred, ki_host_thy_pred)
+
+
 
 # naive Treg counts in the periphery  with 90% envelopes
 Counts_per_pred <- as.data.frame(fit, pars = c("counts_per_mean_pred1", "counts_per_mean_pred2",
@@ -37,23 +91,6 @@ Counts_per_pred <- as.data.frame(fit, pars = c("counts_per_mean_pred1", "counts_
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
          location = "Periphery")  
 
-Counts_pred <- rbind(Counts_thy_pred, Counts_per_pred)
-
-
-# Nfd in thymic naive Tregs with 90% envelopes
-Nfd_thy_pred <- as.data.frame(fit, pars = c("Nfd_thy_mean_pred1", "Nfd_thy_mean_pred2",
-                                             "Nfd_thy_mean_pred3", "Nfd_thy_mean_pred4")) %>%
-  gather(factor_key = TRUE) %>%
-  group_by(key) %>%
-  summarize(lb = quantile(value, probs = 0.05),
-            median = quantile(value, probs = 0.5),
-            ub = quantile(value, probs = 0.95))  %>%
-  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
-  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
-                             ifelse(grepl("pred2", key), "agebin2",
-                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
-         location = "Thymus")   
-
 # Nfd in peripheral naive Tregs with 90% envelopes
 Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_pred2",
                                              "Nfd_per_mean_pred3", "Nfd_per_mean_pred4")) %>%
@@ -68,22 +105,7 @@ Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
          location = "Periphery")  
 
-Nfd_pred <- rbind(Nfd_thy_pred, Nfd_per_pred)
 
-
-# Proportion of Ki67hi in donor thymic naive Tregs with 90% envelopes
-ki_donor_thy_pred <- as.data.frame(fit, pars = c("ki_donor_thy_mean_pred1", "ki_donor_thy_mean_pred2",
-                                                 "ki_donor_thy_mean_pred3", "ki_donor_thy_mean_pred4")) %>%
-  gather(factor_key = TRUE) %>%
-  group_by(key) %>%
-  summarize(lb = quantile(value, probs = 0.05),
-            median = quantile(value, probs = 0.5),
-            ub = quantile(value, probs = 0.95)) %>%
-bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
-  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
-                             ifelse(grepl("pred2", key), "agebin2",
-                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
-         location = "Thymus")   
 
 # Proportion of Ki67hi in donor peripheral naive Tregs with 90% envelopes
 ki_donor_per_pred <- as.data.frame(fit, pars = c("ki_donor_per_mean_pred1", "ki_donor_per_mean_pred2",
@@ -98,22 +120,6 @@ ki_donor_per_pred <- as.data.frame(fit, pars = c("ki_donor_per_mean_pred1", "ki_
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
          location = "Periphery")   
-
-ki_donor_pred <- rbind(ki_donor_thy_pred, ki_donor_per_pred)
-
-# Proportion of Ki67hi in host thymic naive Tregs with 90% envelopes
-ki_host_thy_pred <- as.data.frame(fit, pars = c("ki_host_thy_mean_pred1", "ki_host_thy_mean_pred2",
-                                                "ki_host_thy_mean_pred3", "ki_host_thy_mean_pred4")) %>%
-  gather(factor_key = TRUE) %>%
-  group_by(key) %>%
-  summarize(lb = quantile(value, probs = 0.05),
-            median = quantile(value, probs = 0.5),
-            ub = quantile(value, probs = 0.95)) %>%
-  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
-  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
-                             ifelse(grepl("pred2", key), "agebin2",
-                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
-         location = "Thymus")    
 
 
 # Proportion of Ki67hi in host peripheral naive Tregs with 90% envelopes

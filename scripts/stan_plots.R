@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent"
+modelName <- "Incumbent_Thy2"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -63,16 +63,20 @@ hostki_data <- read.csv(hostki_file) %>%
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))%>%
-  gather(c(Thymus, Periphery), key='location', value = 'host_ki')
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
+         subcomp='Host')%>%
+  gather(c(Thymus, Periphery), key='location', value = 'prop_ki')
 
 donorki_file <- file.path("data", "donorKi67_naiTreg.csv")
 donorki_data <- read.csv(donorki_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))%>%
-  gather(c(Thymus, Periphery), key='location', value = 'donor_ki')
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
+         subcomp='Donor')%>%
+  gather(c(Thymus, Periphery), key='location', value = 'prop_ki')
+
+ki_data <- rbind(donorki_data, hostki_data)
 
 # ################################################################################################
 # calculating PSIS-L00-CV for the fit
@@ -159,31 +163,31 @@ ggplot() +
   facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
   guides(fill='none')+ myTheme
 
-# donor Ki67 fractions
+# thymic Ki67 fractions
+
+fac_labels <- c(`agebin1`= '6-8 weeks', `agebin2`= '8-10 weeks', `agebin3`= '10-12 weeks', `agebin4`= '12-25 weeks')
 
 ggplot() +
-  geom_ribbon(data = ki_donor_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = ageBMT_bin), alpha = 0.2)+
-  geom_line(data = ki_donor_pred, aes(x = timeseries, y = median*100, color = ageBMT_bin), size=1.2) +
-  geom_point(data = donorki_data, aes(x = age.at.S1K, y = donor_ki*100, color = ageBMT_bin), size=2) +
+  geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.2)+
+  geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp), size=1.2) +
+  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=2) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
-  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
-  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
-  guides(fill='none')+ myTheme
+  facet_wrap(~ ageBMT_bin, scales = 'free', labeller = as_labeller(fac_labels))+
+  guides(fill='none') + myTheme + theme(legend.title = element_blank())
 
-# Host Ki67 fractions
+# Peripheral Ki67 fractions
 
 ggplot() +
-  geom_ribbon(data = ki_host_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = ageBMT_bin), alpha = 0.2)+
-  geom_line(data = ki_host_pred, aes(x = timeseries, y = median*100, color = ageBMT_bin), size=1.2) +
-  geom_point(data = hostki_data, aes(x = age.at.S1K, y = host_ki*100, color = ageBMT_bin), size=2) +
-  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in host naive Tregs") +
-  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
+  geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.2)+
+  geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp), size=1.2) +
+  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=2) +
+  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
-  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
-  guides(fill='none')+ myTheme
+  facet_wrap(~ ageBMT_bin, scales = 'free')+
+  guides(fill='none') + myTheme + theme(legend.title = element_blank())
 
 dev.off()
 
