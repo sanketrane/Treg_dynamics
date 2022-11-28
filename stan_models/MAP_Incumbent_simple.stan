@@ -317,7 +317,7 @@ transformed parameters{
   global_params[8] = exp(y3_0);
   global_params[9] = exp(y4_0);
 
-  //// PDE solution for chimera dataset -- x_r = data time and x_i = time at BMT
+  //// ODE solution for chimera dataset -- x_r = data time and x_i = time at BMT
   //  chi_solve = solve_ode_chi(data_time, data_tb, init_cond, to_array_1d(global_params));
 
   //  for (i in 1:n_solve){

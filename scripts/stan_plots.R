@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "rtem"
+modelName <- "Incumbent"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -170,7 +170,7 @@ fac_labels <- c(`agebin1`= '6-8 weeks', `agebin2`= '8-10 weeks', `agebin3`= '10-
 ggplot() +
   geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
   geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
-  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=2) +
+  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=1.5) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
@@ -182,7 +182,7 @@ ggplot() +
 ggplot() +
   geom_ribbon(data = ki_per_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
   geom_line(data = ki_per_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
-  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=2) +
+  geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=1.5) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 

@@ -6,22 +6,22 @@ library(rstan)
 library(tidyverse)
 ####################################################################################
 ## testing models from stan
-stanmodel_file <- file.path("stan_models", "MAP_rtem_alt.stan")
+stanmodel_file <- file.path("stan_models", "MAP_rtem_simple.stan")
 expose_stan_functions(stanmodel_file)
 
 ts_seq <- round(sample(seq(70, 100, length.out = 10), 3, replace = FALSE)) %>% sort()
 agebmtseq <- rep(49, length(ts_seq))
 #init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
 #               0,0,0,0,0,0,0,0)
-init_cond <- c(exp(8.5), exp(10), exp(8.75), exp(12.4), exp(10.5), exp(12), exp(9.9), exp(11.14),
-               0,0,0,0)
-#init_cond <- c(exp(8.5), exp(10), exp(8.75), exp(12.4), 0,0)
+#init_cond <- c(exp(8.5), exp(10), exp(8.75), exp(12.4), exp(10.5), exp(12), exp(9.9), exp(11.14),
+#               0,0,0,0)
+init_cond <- c(exp(8.5), exp(10), exp(8.75), exp(12.4), 0,0,0,0)
 
-params <- c(psi=0.1, alpha=0.01, delta_D=0.09, delta_I=0.02, beta=0.004)
+params <- c(psi=0.1, alpha=0.01, delta_0=0.09, mu=0.01, beta=0.004, delta=0.02)
 
 global_parms <- c(params,init_cond)
 ode_sol <- solve_ode_chi(ts_seq, agebmtseq, init_cond, params)
-math_reduce(global_parms, local_params = c(0), x_r = 90, x_i = 79)
+math_reduce(global_parms, local_params = c(0), x_r = 90, x_i = 49)
 
 data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
 
