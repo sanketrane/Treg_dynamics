@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent_Thy2"
+modelName <- "rtem"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -28,11 +28,11 @@ source(file.path(toolsDir, "stanTools.R"))                # save results in new 
 stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
 stanfit2 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c2",".csv")))
 
-fit <- sflist2stanfit(list(stanfit1, stanfit2))
+fit <- sflist2stanfit(list(stanfit2))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
-num_pars <- which(fit@model_pars %in% "sigma_host_ki_thy")      # the variable "sigma4" will change depdending on the data used
+num_pars <- which(fit@model_pars %in% "global_params") -1      # the variable "sigma4" will change depdending on the data used
 parametersToPlot <- fit@model_pars[1:num_pars]
 
 # number of post-burnin samples that are used for plotting 
@@ -103,7 +103,7 @@ loo_loglik <- loo(log_lik_comb, save_psis = FALSE, cores = 8)
 
 # Widely applicable AIC
 AICw_lok <- waic(cbind(thycounts_loglik, thyfd_loglik, percounts_loglik, perfd_loglik,
-                       ki_donor_thy_loglik, ki_host_thy_loglik, ki_donor_per_loglik, ki_host_per_loglik))
+                      ki_donor_thy_loglik, ki_host_thy_loglik, ki_donor_per_loglik, ki_host_per_loglik))
 
 # AIC from LLmax
 #AIC_lok <-  -2 * max(combined_loglik)  + 2 * length(parametersToPlot)
@@ -139,8 +139,8 @@ pdf(file = file.path(outputDir, paste(modelName,"MainPlots%03d.pdf", sep = "")),
 
 
 ggplot() +
-  geom_ribbon(data = Counts_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.2)+
-  geom_line(data = Counts_pred, aes(x = timeseries, y = median, color = ageBMT_bin), size=1.2) +
+  geom_ribbon(data = Counts_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
+  geom_line(data = Counts_pred, aes(x = timeseries, y = median, color = ageBMT_bin)) +
   geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
   labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
@@ -153,8 +153,8 @@ ggplot() +
 # normalised donor fractions
 
 ggplot() +
-  geom_ribbon(data = Nfd_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.2)+
-  geom_line(data = Nfd_pred, aes(x = timeseries, y = median, color = ageBMT_bin), size=1.2) +
+  geom_ribbon(data = Nfd_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
+  geom_line(data = Nfd_pred, aes(x = timeseries, y = median, color = ageBMT_bin)) +
   geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
   labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
@@ -168,8 +168,8 @@ ggplot() +
 fac_labels <- c(`agebin1`= '6-8 weeks', `agebin2`= '8-10 weeks', `agebin3`= '10-12 weeks', `agebin4`= '12-25 weeks')
 
 ggplot() +
-  geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.2)+
-  geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp), size=1.2) +
+  geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
+  geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
   geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=2) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
@@ -180,8 +180,8 @@ ggplot() +
 # Peripheral Ki67 fractions
 
 ggplot() +
-  geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.2)+
-  geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp), size=1.2) +
+  geom_ribbon(data = ki_per_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
+  geom_line(data = ki_per_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
   geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=2) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+

@@ -43,33 +43,33 @@ functions{
 
 real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   real psi = parms[1];
-  real rho_D = parms[2];
+  real alpha = parms[2];
   real delta_D = parms[3];
-  real rho_I = parms[4];
+  real delta_I = parms[4];
+  real beta = parms[5];
 
   real dydt[6];
   real kloss  = 1/3.5;            //rate of loss of ki67
-  real eps_host = 0.326611;      // Mean Ki67 hi fraction in host-BM-derived FoxP3 negative Sp4 T cells
 
   // age of BMT in each recipient
-  real ageAtBMT = parms[5];
+  real ageAtBMT = parms[6];
 
   // model that assumes that tranistionals divide and die at different rates than mature naive T cells
   // Host naive Tregs
-  // Thymic ki  hi displaceable
-  dydt[1] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * eps_host + rho_D * (2 * y[2] + y[1]) - (kloss + delta_D) * y[1];
-  // Thymic ki lo displaceable
-  dydt[2] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * (1 - eps_host) + kloss * y[1] - (rho_D + delta_D) * y[2];
-  // Thymic ki hi Incumbent
-  dydt[3] = rho_I * (2 * y[4] + y[3]) - (kloss + rho_I) * y[3];
-  // Thymic ki lo Incumbent
-  dydt[4] = kloss * y[3] - (rho_I + rho_I) * y[4];
+  // Thymic displaceable
+  dydt[1] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) + beta * y[2] - (alpha + delta_D) * y[1];
+  // Peripheral displaceable
+  dydt[2] = alpha * y[1] - (beta + delta_D) * y[2];
+  // Peripheral  Incumbent
+  dydt[3] = alpha * y[4] - (beta + delta_I) * y[3];
+    // Thymic  Incumbent
+  dydt[4] = beta * y[3] - (alpha + delta_I) * y[4];
 
   // Donor naive Tregs
-  // Thymic ki  hi displaceable
-  dydt[5] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_D * (2 * y[6] + y[5]) - (kloss + delta_D) * y[5];
-  // Thymic ki lo displaceable
-  dydt[6] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time)) + kloss * y[5] - (rho_D + delta_D) * y[6];
+  // Thymic displaceable
+  dydt[5] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) + beta * y[6] - (alpha + delta_D) * y[5];
+  // Peripheral displaceable
+  dydt[6] = alpha * y[5] - (beta + delta_D) * y[6];
 
   return dydt;
 }
@@ -82,12 +82,11 @@ real[] solve_init(real ageAtBMT,
 
     real ta = 40;                            // age at BMT for the youngest host
     real y_init[2, 6];
-    real params_init[5];
+    real params_init[6];
 
-    params_init[1:4] = parms[1:4];
-    params_init[5] = ta;
+    params_init[1:5] = parms[1:5];
+    params_init[6] = ta;
 
-    y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
     y_init[1] = init_cond;                 // init conditions at the earliest BMT (i.e. in younegst animal)
     if (ageAtBMT==40) {
       y_init[2] = init_cond;
@@ -99,7 +98,7 @@ real[] solve_init(real ageAtBMT,
 
 real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms){
      real y_solve[6];
-    real params[5];
+    real params[6];
 
     real y0[6];
     real init_tb[6];                         // init conditions at the mean age of BMT for the group
@@ -115,8 +114,8 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
     init_tb[5] = 0.0;
     init_tb[6] = 0.0;
 
-    params[1:4] = parms[1:4];
-    params[5] = ageAtBMT;                                           // age at BMT
+    params[1:5] = parms[1:5];
+    params[6] = ageAtBMT;                                           // age at BMT
 
     y_solve = to_array_1d(integrate_ode_rk45(shm_chi, init_tb, ageAtBMT, rep_array(solve_time, 1), params, {0.0}, {0}));
 
@@ -140,22 +139,19 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
     real tb_time[n];
 
     //params
-    real y1_0 = global_params[5]; real y2_0 = global_params[6];  real y3_0 = global_params[7];  real y4_0 = global_params[8];
+    real y1_0 = global_params[6]; real y2_0 = global_params[7];  real y3_0 = global_params[8];
+    real y4_0 = global_params[9];
 
     real init_cond[6];
 
     // ODE solution -- predictions for the observed timecourse
     real chi_solve[n, 6];
 
-    real counts_thy[n]; real donor_counts_thy[n];
-    real host_counts_thy[n]; real donor_ki_thy[n];
-    real host_ki_thy[n];
-
+    real counts_thy[n]; real counts_per[n]; real donor_counts_thy[n]; real donor_counts_per[n];
     vector[4*n] y_mean_stacked;
 
     // ODE solution -- predictions for the observed timecourse
-    init_cond[1] = y1_0; init_cond[2] = y2_0; init_cond[3] = y3_0; init_cond[4] = y4_0;
-    init_cond[5] = 0.0; init_cond[6] = 0.0;
+    init_cond[1] = y1_0; init_cond[2] = y2_0; init_cond[3] = y3_0; init_cond[4] = y4_0; init_cond[5] = 0; init_cond[6] = 0;
 
     for (i in 1:n){
       tb_time[i] = ageAtBMT[i]/1.0;
@@ -166,16 +162,15 @@ real[] solve_chi(real solve_time, real ageAtBMT, real[] init_cond, real[] parms)
       chi_solve = solve_ode_chi(solve_time, tb_time, init_cond, to_array_1d(global_params));
 
       for (i in 1:n){
-        counts_thy[i] = chi_solve[i, 1] + chi_solve[i, 2] + chi_solve[i, 3] + chi_solve[i, 4] + chi_solve[i, 5] + chi_solve[i, 6];
-        donor_counts_thy[i] = chi_solve[i, 5] + chi_solve[i, 6];
-        host_counts_thy[i] = chi_solve[i, 1] + chi_solve[i, 2] + chi_solve[i, 3] + chi_solve[i, 4];
-        donor_ki_thy[i] = (chi_solve[i, 5])/donor_counts_thy[i];
-        host_ki_thy[i] = (chi_solve[i, 1] + chi_solve[i, 3])/host_counts_thy[i];
+        counts_thy[i] = chi_solve[i, 1] + chi_solve[i, 4] + chi_solve[i, 5];
+        counts_per[i] = chi_solve[i, 2] + chi_solve[i, 3] + chi_solve[i, 6];
+        donor_counts_thy[i] = chi_solve[i, 5];
+        donor_counts_per[i] = chi_solve[i, 6];
 
         y_mean_stacked[4*i - 3] = counts_thy[i];
-        y_mean_stacked[4*i - 2] = donor_counts_thy[i]/(counts_thy[i] * Chi_spline(solve_time[i] - tb_time[i]));
-        y_mean_stacked[4*i - 1] = host_ki_thy[i];
-        y_mean_stacked[4*i - 0] = donor_ki_thy[i];
+        y_mean_stacked[4*i - 2] = counts_per[i];
+        y_mean_stacked[4*i - 1] = donor_counts_thy[i]/(counts_thy[i] * Chi_spline(solve_time[i] - tb_time[i]));
+        y_mean_stacked[4*i - 0] = donor_counts_per[i]/(counts_per[i] * Chi_spline(solve_time[i] - tb_time[i]));
       }
 
       return y_mean_stacked;
@@ -268,86 +263,110 @@ transformed data{
 
 parameters {
   real<lower= 0, upper= 1> psi;
-  real<lower= 0, upper= 1> rho_D;
+  real<lower= 0, upper= 1> alpha;
   real<lower= 0, upper= 1> delta_D;
-  real<lower= 0, upper= 1> rho_I;
+  real<lower= 0, upper= 1> delta_I;
+  real<lower= 0, upper= 1> beta;
   real<lower= 0> y1_0;
   real<lower= 0> y2_0;
   real<lower= 0> y3_0;
   real<lower= 0> y4_0;
 
-
+  real<lower=0> sigma_counts_per;
   real<lower=0> sigma_counts_thy;
+  real<lower=0> sigma_Nfd_per;
   real<lower=0> sigma_Nfd_thy;
-  real<lower=0> sigma_donor_ki_thy;
-  real<lower=0> sigma_host_ki_thy;
 }
 
 transformed parameters{
   vector[9] global_params;
   vector[n_solve] counts_thy_solve;               // ODE predictions for naive Treg counts in thymus
+  vector[n_solve] counts_per_solve;               // ODE predictions for naive Treg counts in Periphery
   vector[n_solve] Nfd_thy_solve;                  // ODE predictions for naive Treg Nfd in thymus
-  vector[n_solve] ki_host_thy_solve;              // ODE predictions for naive Treg host ki67 proportions in thymus
-  vector[n_solve] ki_donor_thy_solve;             // ODE predictions for naive Treg donor ki67 proportions in thymus
+  vector[n_solve] Nfd_per_solve;                  // ODE predictions for naive Treg Nfd in periphery
   vector[4*n_solve] y_mean_stacked;               // compliled output across all nodes
 
   vector[numObs1] counts_thy_mean;               // ODE predictions for naive Treg counts in thymus
+  vector[numObs1] counts_per_mean;               // ODE predictions for naive Treg counts in Periphery
   vector[numObs2] Nfd_thy_mean;                  // ODE predictions for naive Treg Nfd in thymus
-  vector[numObs4] ki_host_thy_mean;              // ODE predictions for naive Treg host ki67 proportions in thymus
-  vector[numObs3] ki_donor_thy_mean;             // ODE predictions for naive Treg donor ki67 proportions in thymus
+  vector[numObs2] Nfd_per_mean;                  // ODE predictions for naive Treg Nfd in periphery
+//  real init_cond[6];
+//
+//  // ODE solution -- predictions for the observed timecourse
+//  real chi_solve[n_solve, 6];
+//  real data_time[n_solve];
+//  real data_tb[n_solve];
+//
+//  for (i in 1:n_solve){
+//    data_time[i] = solve_time[i]/1.0;
+//    data_tb[i] = ageAtBMT[i]/1.0;
+//  }
+//
+//  // ODE solution -- predictions for the observed timecourse
+//  init_cond[1] =  exp(y1_0); init_cond[2] =  exp(y2_0); init_cond[3] =  exp(y3_0);
+//  init_cond[4] =  exp(y4_0); init_cond[5] = 0; init_cond[6] = 0;
+
 
   global_params[1] = psi;
-  global_params[2] = rho_D;
+  global_params[2] = alpha;
   global_params[3] = delta_D;
-  global_params[4] = rho_I;
-  global_params[5] =  exp(y1_0);
-  global_params[6] = exp(y2_0);
-  global_params[7] = exp(y3_0);
-  global_params[8] = exp(y4_0);
+  global_params[4] = delta_I;
+  global_params[5] = beta;
+  global_params[6] = exp(y1_0);
+  global_params[7] = exp(y2_0);
+  global_params[8] = exp(y3_0);
+  global_params[9] = exp(y4_0);
+
+  //// PDE solution for chimera dataset -- x_r = data time and x_i = time at BMT
+  //  chi_solve = solve_ode_chi(data_time, data_tb, init_cond, to_array_1d(global_params));
+
+  //  for (i in 1:n_solve){
+  //    counts_thy_solve[i] = chi_solve[i, 1] + chi_solve[i, 4] + chi_solve[i, 5];
+  //    counts_per_solve[i] = chi_solve[i, 2] + chi_solve[i, 3] + chi_solve[i, 6];
+  //    Nfd_thy_solve[i] = chi_solve[i, 5]/(counts_thy_solve[i] * Chi_spline(solve_time[i] - ageAtBMT[i]));
+  //    Nfd_per_solve[i] = chi_solve[i, 6]/(counts_per_solve[i] * Chi_spline(solve_time[i] - ageAtBMT[i]));
+  //  }
 
   // combining the output from all the shards
   y_mean_stacked = map_rect(math_reduce, global_params, local_params, x_r, x_i);
 
   for (i in 1:n_solve){
     counts_thy_solve[i]   = y_mean_stacked[4*i - 3];
-    Nfd_thy_solve[i]      = y_mean_stacked[4*i - 2];
-    ki_host_thy_solve[i]  = y_mean_stacked[4*i - 1];
-    ki_donor_thy_solve[i] = y_mean_stacked[4*i - 0];
+    counts_per_solve[i]   = y_mean_stacked[4*i - 2];
+    Nfd_thy_solve[i]      = y_mean_stacked[4*i - 1];
+    Nfd_per_solve[i]      = y_mean_stacked[4*i - 0];
   }
 
   for (i in 1:numObs1){
     counts_thy_mean[i]   = counts_thy_solve[time_index_counts[i]];
+    counts_per_mean[i]   = counts_per_solve[time_index_counts[i]];
   }
   for (i in 1:numObs2){
     Nfd_thy_mean[i]   = Nfd_thy_solve[time_index_chi[i]];
-  }
-  for (i in 1:numObs3){
-    ki_donor_thy_mean[i]   = ki_donor_thy_solve[time_index_donorki[i]];
-  }
-  for (i in 1:numObs4){
-    ki_host_thy_mean[i]   = ki_host_thy_solve[time_index_hostki[i]];
+    Nfd_per_mean[i]   = Nfd_per_solve[time_index_chi[i]];
   }
 }
 
 model{
-  psi ~ normal(0.3, 0.2);
-  rho_D ~ normal(0.005, 0.25);
+  psi ~ normal(0.03, 0.2);
+  alpha ~ normal(0.1, 0.25);
   delta_D ~ normal(0.01, 0.25);
-  rho_I ~ normal(0.01, 0.25);
+  delta_I ~ normal(0.01, 0.25);
+  beta ~ normal(0.01, 0.25);
   y1_0 ~ normal(9, 2.5);
   y2_0 ~ normal(11, 2.5);
   y3_0 ~ normal(9, 2.5);
   y4_0 ~ normal(11, 2.5);
 
+  sigma_counts_per ~ normal(0.5, 0.5);
   sigma_counts_thy ~ normal(0.7, 0.5);
+  sigma_Nfd_per ~ normal(0.4, 0.5);
   sigma_Nfd_thy ~ normal(0.4, 0.5);
-  sigma_donor_ki_thy ~ normal(0.3, 0.5);
-  sigma_host_ki_thy ~ normal(0.3, 2);
 
   log(counts_thy) ~ normal(log(counts_thy_mean), sigma_counts_thy);
+  log(counts_per) ~ normal(log(counts_per_mean), sigma_counts_per);
   asinsqrt_array(Nfd_thy) ~ normal(asinsqrt_array(to_array_1d(Nfd_thy_mean)), sigma_Nfd_thy);
-  asinsqrt_array(ki_donor_thy) ~ normal(asinsqrt_array(to_array_1d(ki_donor_thy_mean)), sigma_donor_ki_thy);
-  asinsqrt_array(ki_host_thy) ~ normal(asinsqrt_array(to_array_1d(ki_host_thy_mean)), sigma_host_ki_thy);
+  asinsqrt_array(Nfd_per) ~ normal(asinsqrt_array(to_array_1d(Nfd_per_mean)), sigma_Nfd_per);
 }
 
 generated quantities{
@@ -356,36 +375,26 @@ generated quantities{
   real y_chi_pred3[numPred, 6];
   real y_chi_pred4[numPred, 6];
 
-  real counts_thy_mean_pred1[numPred];
-  real counts_thy_mean_pred2[numPred];
-  real counts_thy_mean_pred3[numPred];
-  real counts_thy_mean_pred4[numPred];
+  real counts_thy_mean_pred1[numPred];  real counts_per_mean_pred1[numPred];
+  real counts_thy_mean_pred2[numPred];  real counts_per_mean_pred2[numPred];
+  real counts_thy_mean_pred3[numPred];  real counts_per_mean_pred3[numPred];
+  real counts_thy_mean_pred4[numPred];  real counts_per_mean_pred4[numPred];
 
-  real Nfd_thy_mean_pred1[numPred];
-  real Nfd_thy_mean_pred2[numPred];
-  real Nfd_thy_mean_pred3[numPred];
-  real Nfd_thy_mean_pred4[numPred];
-
-  real ki_donor_thy_mean_pred1[numPred];
-  real ki_donor_thy_mean_pred2[numPred];
-  real ki_donor_thy_mean_pred3[numPred];
-  real ki_donor_thy_mean_pred4[numPred];
-
-  real ki_host_thy_mean_pred1[numPred];
-  real ki_host_thy_mean_pred2[numPred];
-  real ki_host_thy_mean_pred3[numPred];
-  real ki_host_thy_mean_pred4[numPred];
+  real Nfd_thy_mean_pred1[numPred];  real Nfd_per_mean_pred1[numPred];
+  real Nfd_thy_mean_pred2[numPred];  real Nfd_per_mean_pred2[numPred];
+  real Nfd_thy_mean_pred3[numPred];  real Nfd_per_mean_pred3[numPred];
+  real Nfd_thy_mean_pred4[numPred];  real Nfd_per_mean_pred4[numPred];
 
   // log likelihoods
   vector[numObs1] log_lik_counts_thy;
+  vector[numObs1] log_lik_counts_per;
   vector[numObs2] log_lik_Nfd_thy;
-  vector[numObs3] log_lik_ki_donor_thy;
-  vector[numObs4] log_lik_ki_host_thy;
+  vector[numObs2] log_lik_Nfd_per;
 
   // initial conditions
   real init_cond[6];
   init_cond[1] = exp(y1_0); init_cond[2] = exp(y2_0); init_cond[3] = exp(y3_0); init_cond[4] = exp(y4_0);
-  init_cond[5] = 0.0; init_cond[6] = 0.0;
+  init_cond[5] = 0; init_cond[6] =0;
 
   // predictions for the whole timecourse
   y_chi_pred1 = solve_ode_chi(ts_pred1, tb_pred1, init_cond, to_array_1d(global_params));
@@ -394,38 +403,35 @@ generated quantities{
   y_chi_pred4 = solve_ode_chi(ts_pred4, tb_pred4, init_cond, to_array_1d(global_params));
 
   for (i in 1:numPred){
-    counts_thy_mean_pred1[i] = y_chi_pred1[i, 1] + y_chi_pred1[i, 2] + y_chi_pred1[i, 3] + y_chi_pred1[i, 4] + y_chi_pred1[i, 5] + y_chi_pred1[i, 6];
-    counts_thy_mean_pred2[i] = y_chi_pred2[i, 1] + y_chi_pred2[i, 2] + y_chi_pred2[i, 3] + y_chi_pred2[i, 4] + y_chi_pred2[i, 5] + y_chi_pred2[i, 6];
-    counts_thy_mean_pred3[i] = y_chi_pred3[i, 1] + y_chi_pred3[i, 2] + y_chi_pred3[i, 3] + y_chi_pred3[i, 4] + y_chi_pred3[i, 5] + y_chi_pred3[i, 6];
-    counts_thy_mean_pred4[i] = y_chi_pred4[i, 1] + y_chi_pred4[i, 2] + y_chi_pred4[i, 3] + y_chi_pred4[i, 4] + y_chi_pred4[i, 5] + y_chi_pred4[i, 6];
+    counts_thy_mean_pred1[i] = y_chi_pred1[i, 1] + y_chi_pred1[i, 4] + y_chi_pred1[i, 5];
+    counts_thy_mean_pred2[i] = y_chi_pred2[i, 1] + y_chi_pred2[i, 4] + y_chi_pred2[i, 5];
+    counts_thy_mean_pred3[i] = y_chi_pred3[i, 1] + y_chi_pred3[i, 4] + y_chi_pred3[i, 5];
+    counts_thy_mean_pred4[i] = y_chi_pred4[i, 1] + y_chi_pred4[i, 4] + y_chi_pred4[i, 5];
 
-    Nfd_thy_mean_pred1[i] = (y_chi_pred1[i, 5] + y_chi_pred1[i, 6])/(counts_thy_mean_pred1[i] * Chi_spline(ts_pred1[i] - tb_pred1[i]));
-    Nfd_thy_mean_pred2[i] = (y_chi_pred2[i, 5] + y_chi_pred2[i, 6])/(counts_thy_mean_pred1[i] * Chi_spline(ts_pred2[i] - tb_pred2[i]));
-    Nfd_thy_mean_pred3[i] = (y_chi_pred3[i, 5] + y_chi_pred3[i, 6])/(counts_thy_mean_pred1[i] * Chi_spline(ts_pred3[i] - tb_pred3[i]));
-    Nfd_thy_mean_pred4[i] = (y_chi_pred4[i, 5] + y_chi_pred4[i, 6])/(counts_thy_mean_pred1[i] * Chi_spline(ts_pred4[i] - tb_pred4[i]));
+    counts_per_mean_pred1[i] = y_chi_pred1[i, 2] + y_chi_pred1[i, 3] + y_chi_pred1[i, 6];
+    counts_per_mean_pred2[i] = y_chi_pred2[i, 2] + y_chi_pred2[i, 3] + y_chi_pred2[i, 6];
+    counts_per_mean_pred3[i] = y_chi_pred3[i, 2] + y_chi_pred3[i, 3] + y_chi_pred3[i, 6];
+    counts_per_mean_pred4[i] = y_chi_pred4[i, 2] + y_chi_pred4[i, 3] + y_chi_pred4[i, 6];
 
-    ki_donor_thy_mean_pred1[i] = (y_chi_pred1[i, 5])/(y_chi_pred1[i, 5] + y_chi_pred1[i, 6]);
-    ki_donor_thy_mean_pred2[i] = (y_chi_pred2[i, 5])/(y_chi_pred2[i, 5] + y_chi_pred2[i, 6]);
-    ki_donor_thy_mean_pred3[i] = (y_chi_pred3[i, 5])/(y_chi_pred3[i, 5] + y_chi_pred3[i, 6]);
-    ki_donor_thy_mean_pred4[i] = (y_chi_pred4[i, 5])/(y_chi_pred4[i, 5] + y_chi_pred4[i, 6]);
+    Nfd_thy_mean_pred1[i] = (y_chi_pred1[i, 5])/(counts_thy_mean_pred1[i] * Chi_spline(ts_pred1[i] - tb_pred1[i]));
+    Nfd_thy_mean_pred2[i] = (y_chi_pred2[i, 5])/(counts_thy_mean_pred2[i] * Chi_spline(ts_pred2[i] - tb_pred2[i]));
+    Nfd_thy_mean_pred3[i] = (y_chi_pred3[i, 5])/(counts_thy_mean_pred3[i] * Chi_spline(ts_pred3[i] - tb_pred3[i]));
+    Nfd_thy_mean_pred4[i] = (y_chi_pred4[i, 5])/(counts_thy_mean_pred4[i] * Chi_spline(ts_pred4[i] - tb_pred4[i]));
 
-    ki_host_thy_mean_pred1[i] = (y_chi_pred1[i, 1] + y_chi_pred1[i, 3])/(y_chi_pred1[i, 1] + y_chi_pred1[i, 2] + y_chi_pred1[i, 3] + y_chi_pred1[i, 4]);
-    ki_host_thy_mean_pred2[i] = (y_chi_pred2[i, 1] + y_chi_pred2[i, 3])/(y_chi_pred2[i, 1] + y_chi_pred2[i, 2] + y_chi_pred2[i, 3] + y_chi_pred2[i, 4]);
-    ki_host_thy_mean_pred3[i] = (y_chi_pred3[i, 1] + y_chi_pred3[i, 3])/(y_chi_pred3[i, 1] + y_chi_pred3[i, 2] + y_chi_pred3[i, 3] + y_chi_pred3[i, 4]);
-    ki_host_thy_mean_pred4[i] = (y_chi_pred4[i, 1] + y_chi_pred4[i, 3])/(y_chi_pred4[i, 1] + y_chi_pred4[i, 2] + y_chi_pred4[i, 3] + y_chi_pred4[i, 4]);
+    Nfd_per_mean_pred1[i] = (y_chi_pred1[i, 6])/(counts_per_mean_pred1[i] * Chi_spline(ts_pred1[i] - tb_pred1[i]));
+    Nfd_per_mean_pred2[i] = (y_chi_pred2[i, 6])/(counts_per_mean_pred2[i] * Chi_spline(ts_pred2[i] - tb_pred2[i]));
+    Nfd_per_mean_pred3[i] = (y_chi_pred3[i, 6])/(counts_per_mean_pred3[i] * Chi_spline(ts_pred3[i] - tb_pred3[i]));
+    Nfd_per_mean_pred4[i] = (y_chi_pred4[i, 6])/(counts_per_mean_pred4[i] * Chi_spline(ts_pred4[i] - tb_pred4[i]));
   }
 
   // calculating log likelihoods
   for (i in 1:numObs1) {
     log_lik_counts_thy[i] = normal_lpdf(log(counts_thy[i]) | log(counts_thy_mean[i]), sigma_counts_thy);
+    log_lik_counts_per[i] = normal_lpdf(log(counts_per[i]) | log(counts_per_mean[i]), sigma_counts_per);
   }
   for (i in 1:numObs2) {
     log_lik_Nfd_thy[i] = normal_lpdf(asinsqrt_real(Nfd_thy[i]) | asinsqrt_real(Nfd_thy_mean[i]), sigma_Nfd_thy);
+    log_lik_Nfd_per[i] = normal_lpdf(asinsqrt_real(Nfd_per[i]) | asinsqrt_real(Nfd_per_mean[i]), sigma_Nfd_per);
   }
-  for (i in 1:numObs3) {
-    log_lik_ki_donor_thy[i] = normal_lpdf(asinsqrt_real(ki_donor_thy[i]) | asinsqrt_real(ki_donor_thy_mean[i]), sigma_donor_ki_thy);
-  }
-  for (i in 1:numObs4) {
-    log_lik_ki_host_thy[i] = normal_lpdf(asinsqrt_real(ki_host_thy[i]) | asinsqrt_real(ki_host_thy_mean[i]), sigma_host_ki_thy);
-  }
+
 }
