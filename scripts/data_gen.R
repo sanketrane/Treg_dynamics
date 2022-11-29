@@ -76,7 +76,7 @@ ki_host_thy <- hostki_data$Thymus
 
 logit_transf <- function(x){log(x/(1-x))}
 asinsq_transf <- function(x){asin(sqrt(x))}
-logit_transf(Nfd_thy)
+asinsq_transf(Nfd_per)
 plot(logit_transf(Nfd_thy)~data_time_chi)
 plot(asinsq_transf(Nfd_thy)~data_time_chi, col=2)
 

@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent"
+modelName <- "rtem_simple"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -28,7 +28,7 @@ source(file.path(toolsDir, "stanTools.R"))                # save results in new 
 stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
 stanfit2 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c2",".csv")))
 
-fit <- sflist2stanfit(list(stanfit2))
+fit <- sflist2stanfit(list(stanfit1, stanfit2))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model

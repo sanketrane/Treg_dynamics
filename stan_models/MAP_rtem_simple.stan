@@ -272,13 +272,12 @@ transformed data{
 }
 
 parameters {
-  real<lower= 0, upper= 1> psi;
-  real<lower= 0, upper= 1> alpha;
-  real<lower= 0, upper= 1> mu;
-  real<lower= 0, upper= 1> rho;
-  real<lower= 0, upper= 1> beta;
-  real<lower= 0, upper= 1> delta_0;
-  real<lower= 0, upper= 1> delta;
+  real<lower= 0> psi;
+  real<lower= 0> alpha;
+  real<lower= 0, upper= alpha> mu;
+  real<lower= 0> beta;
+  real<lower= 0> delta_0;
+  real<lower= 0, upper= delta_0> delta;
   real<lower= 0> y1_0;
   real<lower= 0> y2_0;
   real<lower= 0> y3_0;

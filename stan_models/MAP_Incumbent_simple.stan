@@ -262,11 +262,11 @@ transformed data{
 }
 
 parameters {
-  real<lower= 0, upper= 1> psi;
-  real<lower= 0, upper= 1> alpha;
-  real<lower= 0, upper= 1> delta_D;
-  real<lower= 0, upper= 1> delta_I;
-  real<lower= 0, upper= 1> beta;
+  real<lower= 0> psi;
+  real<lower= 0> alpha;
+  real<lower= 0> delta_D;
+  //real<lower=0> delta_I;
+  real<lower= 0> beta;
   real<lower= 0> y1_0;
   real<lower= 0> y2_0;
   real<lower= 0> y3_0;
@@ -306,6 +306,7 @@ transformed parameters{
 //  init_cond[1] =  exp(y1_0); init_cond[2] =  exp(y2_0); init_cond[3] =  exp(y3_0);
 //  init_cond[4] =  exp(y4_0); init_cond[5] = 0; init_cond[6] = 0;
 
+  real delta_I = 0.0;
 
   global_params[1] = psi;
   global_params[2] = alpha;
@@ -351,7 +352,7 @@ model{
   psi ~ normal(0.03, 0.2);
   alpha ~ normal(0.1, 0.25);
   delta_D ~ normal(0.01, 0.25);
-  delta_I ~ normal(0.01, 0.25);
+  //delta_I ~ normal(0.01, 0.25);
   beta ~ normal(0.01, 0.25);
   y1_0 ~ normal(9, 2.5);
   y2_0 ~ normal(11, 2.5);
