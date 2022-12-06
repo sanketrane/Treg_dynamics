@@ -7,3 +7,4 @@
 *.Rsave
 *.out
 *.err_out
+*.err
