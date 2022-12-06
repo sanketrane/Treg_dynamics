@@ -1,0 +1,113 @@
+stan_models/MAP_Incumbent_simple sample num_samples=500 num_warmup=300 data file=data/Treg_data_S33.Rdump output file=save_csv/Incumbent_simple_s33.csv
+method = sample (Default)
+method = sample (Default)
+  sample
+    num_samples = 500
+    num_warmup = 300
+    save_warmup = 0 (Default)
+    thin = 1 (Default)
+    adapt
+      engaged = 1 (Default)
+      gamma = 0.050000000000000003 (Default)
+      delta = 0.80000000000000004 (Default)
+      kappa = 0.75 (Default)
+      t0 = 10 (Default)
+      init_buffer = 75 (Default)
+      term_buffer = 50 (Default)
+      window = 25 (Default)
+    algorithm = hmc (Default)
+      hmc
+        engine = nuts (Default)
+          nuts
+            max_depth = 10 (Default)
+        metric = diag_e (Default)
+        metric_file =  (Default)
+        stepsize = 1 (Default)
+        stepsize_jitter = 0 (Default)
+id = 0 (Default)
+data
+  file = data/Treg_data_S33.Rdump
+init = 2 (Default)
+random
+  seed = 3340775283 (Default)
+output
+  file = save_csv/Incumbent_simple_c2.csv
+  diagnostic_file =  (Default)
+  refresh = 100 (Default)
+  sig_figs = -1 (Default)
+  profile_file = profile.csv (Default)
+mpi_enabled = 1
+
+  sample
+    num_samples = 500
+    num_warmup = 300
+    save_warmup = 0 (Default)
+    thin = 1 (Default)
+    adapt
+      engaged = 1 (Default)
+      gamma = 0.050000000000000003 (Default)
+      delta = 0.80000000000000004 (Default)
+      kappa = 0.75 (Default)
+      t0 = 10 (Default)
+      init_buffer = 75 (Default)
+      term_buffer = 50 (Default)
+      window = 25 (Default)
+    algorithm = hmc (Default)
+      hmc
+        engine = nuts (Default)
+          nuts
+            max_depth = 10 (Default)
+        metric = diag_e (Default)
+        metric_file =  (Default)
+        stepsize = 1 (Default)
+        stepsize_jitter = 0 (Default)
+id = 0 (Default)
+data
+  file = data/Treg_data_S33.Rdump
+init = 2 (Default)
+random
+  seed = 3340775283 (Default)
+output
+  file = save_csv/Incumbent_simple_c1.csv
+  diagnostic_file =  (Default)
+  refresh = 100 (Default)
+  sig_figs = -1 (Default)
+  profile_file = profile.csv (Default)
+mpi_enabled = 1
+
+
+Gradient evaluation took 0.033903 seconds
+1000 transitions using 10 leapfrog steps per transition would take 339.03 seconds.
+Adjust your expectations accordingly!
+
+
+
+Gradient evaluation took 0.048051 seconds
+1000 transitions using 10 leapfrog steps per transition would take 480.51 seconds.
+Adjust your expectations accordingly!
+
+
+Iteration:   1 / 800 [  0%]  (Warmup)
+Iteration:   1 / 800 [  0%]  (Warmup)
+Iteration: 100 / 800 [ 12%]  (Warmup)
+Iteration: 100 / 800 [ 12%]  (Warmup)
+Iteration: 200 / 800 [ 25%]  (Warmup)
+Iteration: 200 / 800 [ 25%]  (Warmup)
+Iteration: 300 / 800 [ 37%]  (Warmup)
+Iteration: 301 / 800 [ 37%]  (Sampling)
+Iteration: 300 / 800 [ 37%]  (Warmup)
+Iteration: 301 / 800 [ 37%]  (Sampling)
+Iteration: 400 / 800 [ 50%]  (Sampling)
+Iteration: 400 / 800 [ 50%]  (Sampling)
+Iteration: 500 / 800 [ 62%]  (Sampling)
+Iteration: 500 / 800 [ 62%]  (Sampling)
+Iteration: 600 / 800 [ 75%]  (Sampling)
+Iteration: 600 / 800 [ 75%]  (Sampling)
+Iteration: 700 / 800 [ 87%]  (Sampling)
+Iteration: 700 / 800 [ 87%]  (Sampling)
+Iteration: 800 / 800 [100%]  (Sampling)
+
+ Elapsed Time: 627.252 seconds (Warm-up)
+               1224.01 seconds (Sampling)
+               1851.26 seconds (Total)
+

@@ -1,0 +1,12 @@
+No protocol specified
+Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
+Exception: Error during MPI evaluation. (in 'Treg_dynamics/stan_models/MAP_Incumbent.stan', line 364, column 2 to column 80)
+If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
+but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
+
+Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
+Exception: normal_lpdf: Location parameter[1] is nan, but must be finite! (in 'Treg_dynamics/stan_models/MAP_Incumbent.stan', line 425, column 2 to column 108)
+If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
+but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
+
+slurmstepd-barra: error: *** JOB 1894 ON barra CANCELLED AT 2022-12-06T14:45:36 ***

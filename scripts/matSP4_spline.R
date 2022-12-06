@@ -29,13 +29,14 @@ SP4_chimerism_df <- read_csv("data/Chimerism_thymicSource.csv") %>%
          mouse.ID != 202893)
 
 SP4_donorki67_df <- read_csv("data/donorKi67_thymicSource.csv") %>%
-  rename(SP4_ki = FoxP3_Neg_SP4) %>%
-  mutate(ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
+  mutate(SP4_ki = FoxP3_neg_SP4_ki,
+         ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
                              ifelse(age.at.BMT <= 88, 'agegroup2',
                                     'agegroup3')))
-SP4_hostki67_df <- read_csv("data/hostKi67_thymicSource.csv") %>%
-  rename(SP4_ki = FoxP3_Neg_SP4) %>%
-  mutate(ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
+
+SP4_hostki67_df <- read_csv("data/hostKi67_thymicSource.csv")%>%
+  mutate(SP4_ki = FoxP3_neg_SP4_ki,
+         ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
                              ifelse(age.at.BMT <= 88, 'agegroup2',
                                     'agegroup3')))
 

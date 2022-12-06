@@ -297,7 +297,7 @@ Treg_join %>%
 
 Treg_fd_Norm %>%
   mutate(Periphery = round(naiveTregs_Nfd_periph, 4),
-         Thymus = round(naiveTregs_Nfd_periph, 4)) %>%
+         Thymus = round(naiveTregs_Nfd_thy, 4)) %>%
   select(-contains("Nfd"), -contains('memory')) %>%
   write.csv(file = "data/Nfd_naiTreg.csv", row.names = FALSE)
 
@@ -324,11 +324,13 @@ source_join %>%
   write.csv(file = "data/Chimerism_thymicSource.csv", row.names = FALSE)
 
 
-source_donorKi67 %>%
+source_donor %>%
+  select(contains("age"), time.post.BMT, contains("neg_SP4_ki")) %>%
   write.csv(file = "data/donorKi67_thymicSource.csv", row.names = FALSE)
 
 
-source_hostKi67 %>%
+source_host %>%
+  select(contains("age"), time.post.BMT, contains("neg_SP4_ki")) %>%
   write.csv(file = "data/hostKi67_thymicSource.csv", row.names = FALSE)
 
 

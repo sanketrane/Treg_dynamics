@@ -1,0 +1,23 @@
+No protocol specified
+No protocol specified
+Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
+Exception: Error during MPI evaluation. (in 'Treg_dynamics/stan_models/MAP_Incumbent_simple.stan', line 331, column 2 to column 80)
+If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
+but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
+
+Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
+Exception: Error during MPI evaluation. (in 'Treg_dynamics/stan_models/MAP_Incumbent_simple.stan', line 331, column 2 to column 80)
+If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
+but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
+
+Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
+Exception: Error during MPI evaluation. (in 'Treg_dynamics/stan_models/MAP_Incumbent_simple.stan', line 331, column 2 to column 80)
+If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
+but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
+
+Informational Message: The current Metropolis proposal is about to be rejected because of the following issue:
+Exception: Error during MPI evaluation. (in 'Treg_dynamics/stan_models/MAP_Incumbent_simple.stan', line 331, column 2 to column 80)
+If this warning occurs sporadically, such as for highly constrained variable types like covariance matrices, then the sampler is fine,
+but if this warning occurs often then your model may be either severely ill-conditioned or misspecified.
+
+slurmstepd-barra: error: *** JOB 1839 ON barra CANCELLED AT 2022-11-23T14:59:41 ***

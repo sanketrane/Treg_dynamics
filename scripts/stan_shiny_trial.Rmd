@@ -1,0 +1,111 @@
+---
+title: "Incumbent model -- simulation"
+output: html_document
+runtime: shiny
+---
+
+```{r, echo=FALSE}
+suppressMessages(library(deSolve))
+suppressMessages(library(tidyverse))
+
+theta_spline <- function(Time, psi){psi * 10^6.4 * exp(-0.024 * (Time - 49))}
+chi_spline <- function(Time){0.82 * (1 - exp(-0.063 * (Time - 10)))}
+donor_eps_spline <- function(Time){exp(- 0.068 * (Time - 49)) + 0.38}
+
+shm_chi <- function (t, state, parms) {
+  eps_host = 0.32
+  kloss = 1/3.5
+  with(as.list(c(state, parms)),{
+    dy1 <- theta_spline(t, psi) * (1- chi_spline(t - 40)) * eps_host + rho_D * (2 * y2 + y1) + beta * y3 - (kloss + alpha + delta_D) * y1
+    dy2 <- theta_spline(t, psi) * (1- chi_spline(t - 40)) * (1 - eps_host) + kloss * y1 + beta * y4  - (rho_D + alpha + delta_D) * y2
+    dy3 <- alpha * y1 + rho_D * (2 * y4 + y3) - (kloss + beta + delta_D) * y3
+    dy4 <- alpha * y2 + kloss * y3 - (rho_D + beta + delta_D) * y4
+    dy5 <- alpha * y7 + rho_I * (2 * y6 + y5) - (kloss + beta + rho_I) * y5
+    dy6 <- alpha * y8 + kloss * y5 - (rho_I + beta + rho_I) * y6
+    dy7 <- beta * y5 + rho_I * (2 * y8 + y7) - (kloss + alpha + rho_I) * y7
+    dy8 <- beta * y6+ kloss * y7 - (rho_I + alpha + rho_I) * y8
+    
+    dy9 <- theta_spline(t, psi) * chi_spline(t - 40) * donor_eps_spline(t) + rho_D * (2 * y10 + y9) + beta * y11  - (kloss + alpha + delta_D) * y9
+    dy10 <- theta_spline(t, psi) * Chi_spline(t - 40) * (1 - donor_eps_spline(t)) + kloss * y9 + beta * y12  - (rho_D + alpha + delta_D) * y10
+    dy11 <- alpha * y9 + rho_D * (2 * y12 + y11) - (kloss + beta + delta_D) * y11
+    dy12 <- alpha * y10 + kloss * y11 - (rho_D + beta + delta_D) * y12
+    
+    list(c(dy1, dy2, dy3, dy4, dy5, dy6, dy7, dy8, dy9, dy10, dy11, dy12))
+    })
+}
+
+# time sequence for predictions specific to age bins within the data
+ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
+ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
+ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
+ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
+tb_pred1 <- rep(45, 300)
+tb_pred2 <- rep(66, 300)
+tb_pred3 <- rep(76, 300)
+tb_pred4 <- rep(118, 300)
+```
+
+```{r, echo = FALSE, }
+#simulate <- reactive({
+  state <- c("y1"=exp(9.1), "y2"= exp(10.6), "y3"=exp(8.8), "y4"=exp(10.4), "y5"=exp(10.3), "y6"=exp(10.7),
+               "y7"=exp(10.4), "y8"=exp(11.4), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
+  params <-  c(psi=0.0027,rho_D=input$rho_D, delta_D=input$delta_D,
+                    alpha=0.1, rho_I=input$rho_I, beta=0.0023)
+
+   ode_pred1 <- ode(state, ts_pred1, shm_chi, params)
+  #ode_pred2 <- solve_ode_chi(ts_pred2, tb_pred2, init_cond, params)
+  #ode_pred3 <- solve_ode_chi(ts_pred3, tb_pred3, init_cond, params)
+  #ode_pred4 <- solve_ode_chi(ts_pred4, tb_pred4, init_cond, params)
+ # })
+```
+
+```{r, echo=FALSE}
+renderPlot({
+  chivec1 <- sapply(ts_pred1-tb_pred1, chi_spline)
+  
+  ## results
+  print(system.time(
+        stan_pred_df1 <- data.frame("time_seq" = ts_pred1,
+                                "y_pred" = matrix(unlist(ode_pred1), nrow = length(ts_pred1), byrow = TRUE)) %>%
+      mutate(counts_thy = y_pred.1 + y_pred.2 + y_pred.7 + y_pred.8 + y_pred.9 + y_pred.10,
+         counts_per = y_pred.3 + y_pred.4 + y_pred.5 + y_pred.6 + y_pred.11 + y_pred.12,
+         total_counts = counts_thy + counts_per,
+         Nfd_thy = (y_pred.9 + y_pred.10)/(counts_thy * chivec1),
+         Nfd_per = (y_pred.11 + y_pred.12)/(counts_per * chivec1),
+         donor_ki_thy = (y_pred.9)/(y_pred.9 + y_pred.10),
+         donor_ki_per = (y_pred.11)/(y_pred.11 + y_pred.12),
+         host_ki_thy = (y_pred.1 + y_pred.7)/(y_pred.1 + y_pred.2 + y_pred.7 + y_pred.8),
+         host_ki_per = (y_pred.3 + y_pred.5)/(y_pred.3 + y_pred.4 + y_pred.5 + y_pred.6),
+         ageBMT_bin = 'agebin1') %>%
+      select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+  ))
+  Counts_pred <- rbind(stan_pred_df1)
+  
+  ggplot() +
+    geom_line(data = Counts_pred, aes(x = time_seq, y = counts_thy, color = ageBMT_bin), linetype=2) +
+    geom_line(data = Counts_pred, aes(x = time_seq, y = counts_per, color = ageBMT_bin)) +
+    labs(title=paste('Total counts of thymic naive Tregs'),  y=NULL, x= "Host age (days)") + 
+    scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
+    scale_y_log10() 
+})
+```
+
+<small>
+
+```{r, echo=FALSE}
+inputPanel(
+  flowLayout(
+  h4("Model parameters:"),
+  numericInput(
+  "rho_D", label = "rho_D: rate of division -- Displaceable cells", value = 0.0, min = 0, max = 1, step = 0.01
+  ),
+  numericInput(
+  "delta_D", label = "delta_D: rate of loss -- Displaceable cells", value = 0.0, min = 0, max = 1, step = 0.01
+  ),
+  numericInput(
+  "rho_I", label = "rho_D: rate of division -- Incumbent cells", value = 0.0, min = 0, max = 1, step = 0.01
+  )
+), textsize="50%")
+```
+
+Share Improve this answer Follow

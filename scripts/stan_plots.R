@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "rtem_simple"
+modelName <- "Incumbent_simple"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -27,6 +27,7 @@ source(file.path(toolsDir, "stanTools.R"))                # save results in new 
 # compiling multiple stan objects together that ran on different nodes
 stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
 stanfit2 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c2",".csv")))
+stanfit3 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c3",".csv")))
 
 fit <- sflist2stanfit(list(stanfit1, stanfit2))
 

@@ -59,9 +59,9 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   // model that assumes that tranistionals divide and die at different rates than mature naive T cells
   // Host naive Tregs
   // Thymic ki  hi displaceable
-  dydt[1] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * eps_host + rho_D * (2 * y[2] + y[1]) - (kloss + alpha + delta_D) * y[1];
+  dydt[1] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * eps_host + rho_D * (2 * y[2] + y[1]) + beta * y[3] - (kloss + alpha + delta_D) * y[1];
   // Thymic ki lo displaceable
-  dydt[2] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * (1 - eps_host) + kloss * y[1] - (rho_D + alpha + delta_D) * y[2];
+  dydt[2] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * (1 - eps_host) + kloss * y[1] + beta * y[4]  - (rho_D + alpha + delta_D) * y[2];
   // Peripheral ki hi displaceable
   dydt[3] = alpha * y[1] + rho_D * (2 * y[4] + y[3]) - (kloss + beta + delta_D) * y[3];
   // Peripheral ki lo displaceable
@@ -77,9 +77,9 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
 
   // Donor naive Tregs
   // Thymic ki  hi displaceable
-  dydt[9] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_D * (2 * y[10] + y[9]) - (kloss + alpha + delta_D) * y[9];
+  dydt[9] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_D * (2 * y[10] + y[9]) + beta * y[11]  - (kloss + alpha + delta_D) * y[9];
   // Thymic ki lo displaceable
-  dydt[10] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time)) + kloss * y[9] - (rho_D + alpha + delta_D) * y[10];
+  dydt[10] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time)) + kloss * y[9] + beta * y[12]  - (rho_D + alpha + delta_D) * y[10];
   // Peripheral ki hi displaceable
   dydt[11] = alpha * y[9] + rho_D * (2 * y[12] + y[11]) - (kloss + beta + delta_D) * y[11];
   // Peripheral ki lo displaceable

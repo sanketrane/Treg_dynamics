@@ -1,0 +1,3 @@
+stan_models/MAP_rtem_alt sample num_samples=500 num_warmup=300 data file=data/Treg_data_S33.Rdump output file=save_csv/rtem_alt_s33.csv
+33 total processes failed to start
+33 total processes failed to start
