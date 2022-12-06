@@ -1,1 +1,0 @@
-stan_models/MAP_Incumbent_naiTreg sample num_samples=500 num_warmup=300 data file=data/Treg_data.Rdump output file=save_csv/Incumbent_s33.csv
