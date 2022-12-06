@@ -5,4 +5,5 @@
 *.rds
 *.xlsx
 *.Rsave
-
+*.out
+*.err_out
