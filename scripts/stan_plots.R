@@ -65,7 +65,7 @@ hostki_data <- read.csv(hostki_file) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
-         subcomp='Host')%>%
+         subcomp='Host') %>%
   gather(c(Thymus, Periphery), key='location', value = 'prop_ki')
 
 donorki_file <- file.path("data", "donorKi67_naiTreg.csv")
