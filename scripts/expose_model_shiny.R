@@ -45,11 +45,11 @@ ki_data <- rbind(donorki_data, hostki_data)
 
 #init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
 #               0,0,0,0,0,0,0,0)
-init_cond <- c("y1"=exp(9.1), "y2"= exp(10.6), "y3"=exp(8.8), "y4"=exp(10.4), "y5"=exp(10.3), "y6"=exp(10.7),
-               "y7"=exp(10.4), "y8"=exp(11.4), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
+init_cond <- c("y1"=0.5 * exp(9.7), "y2"= 0.5 *  exp(9.7), "y3"= 0.5 *  exp(14.5), "y4"= 0.5 *  exp(14.5), "y5"= 0.5 *  exp(9.25), "y6"= 0.5 *  exp(9.25),
+               "y7"= 0.5 *  exp(11.45), "y8" = 0.5 *  exp(11.45), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
 #init_cond <- c("y1"=exp(9.6), "y2"= exp(14.3), "y3"=exp(9.1), "y4"=exp(11.9), "y5"=0, "y6"=0)
 
-params <- c(psi=0.0027, rho_D=0.00039, alpha=0.14, delta_D=0.0054, rho_I=0.037, beta=0.0023)
+params <- c(psi=0.011, rho_D=0.0004, alpha=0.87, delta_D=0.027 + 0.0004, rho_I=0.04, beta=0.01)
 #params <- c(psi=0.011, alpha=0.83, delta_D=0.027, delta_I=0.001, beta=0.015)
 
 #data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
@@ -272,7 +272,7 @@ ki_per_pred <- R_pred %>%
   gather(c(Donor, Host), key='subcomp', value = 'prop_ki')
 
 
-ggplot() +
+p4 <- ggplot() +
   geom_line(data = ki_thy_pred, aes(x = time_seq, y = prop_ki*100, color = subcomp)) +
   geom_point(data = filter(ki_data, location == "Periphery"), aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=1.5) +
   labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in peripheral naive Tregs") +
@@ -281,6 +281,6 @@ ggplot() +
   facet_wrap(~ ageBMT_bin, scales = 'free', labeller = as_labeller(fac_labels))+
   guides(fill='none') + myTheme + theme(legend.title = element_blank())
 
-cowplot::plot_grid(p1, p2, p3, p4, nrow = 4)
+cowplot::plot_grid(p1, p2, nrow = 2)
 
 
