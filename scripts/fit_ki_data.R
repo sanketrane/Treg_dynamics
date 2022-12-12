@@ -5,6 +5,7 @@ gc()
 library(rstan)
 library(deSolve)
 library(tidyverse)
+library(parallel)
 ####################################################################################
 ## importing data to be fitted 
 counts_file <- file.path("data", "Counts_naiTreg.csv")
@@ -43,27 +44,11 @@ donorki_data <- read.csv(donorki_file) %>%
 
 ki_data <- rbind(donorki_data, hostki_data)
 
-#init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
-#               0,0,0,0,0,0,0,0)
-init_cond <- c("y1"=0.5 * exp(9.7), "y2"= 0.5 *  exp(9.7), "y3"= 0.5 *  exp(14.5), "y4"= 0.5 *  exp(14.5), "y5"= 0.5 *  exp(9.25), "y6"= 0.5 *  exp(9.25),
-               "y7"= 0.5 *  exp(11.45), "y8" = 0.5 *  exp(11.45), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
-#init_cond <- c("y1"=exp(9.6), "y2"= exp(14.3), "y3"=exp(9.1), "y4"=exp(11.9), "y5"=0, "y6"=0)
-
-params <- c(psi=0.008099747, rho_D=0.0004, alpha=0.638427240, delta_D=0.020695076 + 0.0004, rho_I=0.04, beta=0.011862542)
-#params <- c(psi=0.011, alpha=0.83, delta_D=0.027, delta_I=0.001, beta=0.015)
-
-#data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
-
-# time sequence for predictions specific to age bins within the data
-ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
-ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
-ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
-ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
-tb_pred1 <- rep(45, 300)
-tb_pred2 <- rep(66, 300)
-tb_pred3 <- rep(76, 300)
-tb_pred4 <- rep(118, 300)
-
+## Unique time points with indices to map
+data_time_donorki <- donorki_data$age.at.S1K 
+data_time_hostki <- hostki_data$age.at.S1K 
+tb_time_donorki <- donorki_data$age.at.BMT 
+tb_time_hostki <- hostki_data$age.at.BMT
 
 ### R ode solver predictions
 Theta_spline <- function(Time, psi){psi * (10^6.407133491 * exp(-0.002387866 * (Time - 49)))}
@@ -75,6 +60,7 @@ chivec1 <- sapply(ts_pred1-tb_pred1, chi_spline)
 chivec2 <- sapply(ts_pred2-tb_pred2, chi_spline)
 chivec3 <- sapply(ts_pred3-tb_pred3, chi_spline)
 chivec4 <- sapply(ts_pred4-tb_pred4, chi_spline)
+
 
 ## ODE System
 shm_chi <- function (Time, ageatBMT, y, parms) {
@@ -101,89 +87,173 @@ shm_chi <- function (Time, ageatBMT, y, parms) {
 }
 
 ## initial conditions at ageatBMTs
-init_pred1 <- ode(y=init_cond, times=c(40, 45), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
-init_cond1 <- c(init_pred1[1] + init_pred1[9], init_pred1[2] + init_pred1[10], init_pred1[3] + init_pred1[11],
-                init_pred1[4] + init_pred1[12], init_pred1[5], init_pred1[6], init_pred1[7], init_pred1[8],
-                y9=0,y10=0,y11=0,y12=0)
-R_ode_pred1 <- data.frame(ode(y=init_cond1, times=c(45, ts_pred1), func=shm_chi, parms=params, ageatBMT=45)) %>%
-  filter(time != 45) %>%
-  mutate(time_seq = time,
-         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
-         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
-         total_counts = counts_thy + counts_per,
-         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
-         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+sol_init <- function(parms, tb){
+  rho_D = parms[1]; rho_I = parms[2];
+  f1 = parms[3]; f2 = parms[4]; f3 = parms[5]; f4 = parms[6];
+  ta = 40.0;
+  
+  ## parameter -- estimates and new definitions
+  init_cond <- c("y1"= f1 * exp(9.7), "y2"= (1-f1) *  exp(9.7), 
+                 "y3"= f2 *  exp(14.5), "y4"= (1-f2) *  exp(14.5), 
+                 "y5"= f3 *  exp(9.25), "y6"= (1-f3) *  exp(9.25),
+                 "y7"= f4 *  exp(11.45), "y8" = (1-f4) *  exp(11.45), 
+                 "y9"=0, "y10"=0, "y11"=0, "y12"=0)
+  
+  params_est <- c(psi=0.008099747, alpha=0.638427240, rho_D = rho_D,
+                  delta_D=0.020695076 + rho_D, rho_I = rho_I, beta=0.011862542)
+  
+  return(ode(y=init_cond, times=c(ta, tb), func=shm_chi, parms=params_est, ageatBMT=ta)[2,2:13])
+}
+
+params_new <- c(0.0004, 0.04, 0.3, 0.6, 0.4, 0.3)
+
+sol_ode_par <- function(Time, tb, parms){
+  rho_D = parms[1]; rho_I = parms[2];
+  params_est <- c(psi=0.008099747, alpha=0.638427240, rho_D = rho_D,
+                  delta_D=0.020695076 + rho_D, rho_I = rho_I, beta=0.011862542)
+  
+    init_tb <- sol_init(parms = parms, tb = tb)
+    
+    init_cond <- c(init_tb[1] + init_tb[9], init_tb[2] + init_tb[10], init_tb[3] + init_tb[11],
+                   init_tb[4] + init_tb[12], init_tb[5], init_tb[6], init_tb[7], init_tb[8],
+                   y9=0,y10=0,y11=0,y12=0)
+
+  return(ode(y=init_cond, times=c(tb, Time), func=shm_chi, parms=params_est, ageatBMT=tb)[2, 2:13])
+}
+
+
+#### data transformation functions
+logit_trans <- function(x){
+  
+  log(x/(1-x))
+}
+
+expit_trans <- function(x){
+  
+  exp(x)/(1 + exp(x))
+}
+
+
+
+##fitting log N_total & logit ki_prop to the transformed NCD4 data
+LL_fit <- function(params, boot_data1, boot_data2) { 
+   ## model predictions
+  Donor_ode_sol <- mcmapply(sol_ode_par, Time=data_time_donorki, 
+                            tb=tb_time_donorki, MoreArgs = list(params), mc.cores = 13)
+  
+  Donor_sol_df <- data.frame(t(Donor_ode_sol)) %>%
+    mutate(donor_ki_thy = (y9)/(y9 + y10),
+           donor_ki_per = (y11)/(y11 + y12)) %>%
+    select(contains('donor'))
+  
+  Host_ode_sol<- mcmapply(sol_ode_par, Time=data_time_hostki, 
+                          tb=tb_time_hostki, MoreArgs = list(params), mc.cores = 15)
+  
+  Host_sol_df <- data.frame(t(Host_ode_sol)) %>%
+    mutate(host_ki_thy = (y9)/(y9 + y10),
+           host_ki_per = (y11)/(y11 + y12)) %>%
+    select(contains('host'))
+  
+  ## logit transformed ki67 proportions from the model
+  donor_ki_thy_pred <- logit_trans(Donor_sol_df$donor_ki_thy)
+  donor_ki_per_pred <- logit_trans(Donor_sol_df$donor_ki_per)
+  host_ki_thy_pred  <- logit_trans(Host_sol_df$host_ki_thy)
+  host_ki_per_pred  <- logit_trans(Host_sol_df$host_ki_per)
+  
+  ### data
+  donor_ki_thy_obs <- logit_trans(boot_data1$Ki67_naiveTregs_thy)
+  donor_ki_per_obs <- logit_trans(boot_data1$Ki67_naiveTregs_per)
+  host_ki_thy_obs  <- logit_trans(boot_data2$Ki67_naiveTregs_thy)
+  host_ki_per_obs  <- logit_trans(boot_data2$Ki67_naiveTregs_per)
+  
+  ## calculating the sun of squared residuals
+  ssqres1 <- sum((donor_ki_thy_obs - donor_ki_thy_pred)^2)
+  ssqres2 <- sum((donor_ki_per_obs - donor_ki_per_pred)^2)
+  ssqres3 <- sum((host_ki_thy_obs - host_ki_thy_pred)^2)
+  ssqres4 <- sum((host_ki_per_obs - host_ki_per_pred)^2)
+  
+  k  <- length(params)                #number of unknown parameters 
+  n1 <- nrow(boot_data1)         #number of observations in dataset1
+  n2 <- nrow(boot_data2)           #number of observations in dataset1
+  
+  #cost function
+  #log-likelihood ignoring all the terms dependent only on the number of observations n
+  #matrix multipltication of residual and transpose of residuals
+  logl <-  - (n1/2)* log(ssqres1) - (n1/2)* log(ssqres2) - 
+    (n2/2)* log(ssqres3)  - (n2/2)* log(ssqres4)  
+  
+  return(-logl)     #since optim minimizes the function by default, ML
+} 
+
+optim_fit <- optim(par = params_new, fn = LL_fit, boot_data1 = donorki_data, boot_data2=hostki_data,
+                   method=c("Nelder-Mead"), control = list(trace = 1, maxit = 2000))
+
+optim_fit$par
+par_est <- optim_fit$par
+
+AIC_est <- 2 * length(optim_fit$par) + 2 * optim_fit$value
+print(paste0("Estimated parameters are: ", optim_fit$par))
+print(paste0("AIC value is: ", AIC_est))
+
+
+# time sequence for predictions specific to age bins within the data
+ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
+ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
+ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
+ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
+tb_pred1 <- rep(45, 300)
+tb_pred2 <- rep(66, 300)
+tb_pred3 <- rep(76, 300)
+tb_pred4 <- rep(118, 300)
+
+Donor_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 13)
+
+Donor_pred1_df <- data.frame(t(Donor_ode_pred1)) %>%
+  mutate(time_seq = ts_pred1,
          donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12),
-         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
-         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
-         ageBMT_bin = 'agebin1') %>%
-  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+         donor_ki_per = (y11)/(y11 + y12)) %>%
+  select(time_seq, contains('donor'))
 
-init_pred2 <- ode(y=init_cond, times=c(40, 66), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
-init_cond2 <- c(init_pred2[1] + init_pred2[9], init_pred2[2] + init_pred2[10], init_pred2[3] + init_pred2[11],
-                init_pred2[4] + init_pred2[12], init_pred2[5], init_pred2[6], init_pred2[7], init_pred2[8],
-                y9=0,y10=0,y11=0,y12=0)
+Host_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 10)
 
-R_ode_pred2 <- data.frame(ode(y=init_cond2,  times=c(66, ts_pred2), func=shm_chi, parms=params, ageatBMT=66)) %>%
-  filter(time != 66) %>%
-  mutate(time_seq = time,
-         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
-         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
-         total_counts = counts_thy + counts_per,
-         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
-         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+Host_pred1_df <- data.frame(t(Host_ode_pred1)) %>%
+  mutate(time_seq = data_time_hostki,
          donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12),
-         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
-         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
-         ageBMT_bin = 'agebin2') %>%
-  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+         donor_ki_per = (y11)/(y11 + y12)) %>%
+  select(time_seq, contains('host'))
 
+Donor_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 13)
 
-init_pred3 <-  ode(y=init_cond, times=c(40, 76), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
-init_cond3 <- c(init_pred3[1] + init_pred3[9], init_pred3[2] + init_pred3[10], init_pred3[3] + init_pred3[11],
-                init_pred3[4] + init_pred3[12], init_pred3[5], init_pred3[6], init_pred3[7], init_pred3[8],
-                y9=0,y10=0,y11=0,y12=0)
-
-R_ode_pred3 <-data.frame(ode(y=init_cond3,  times=c(76, ts_pred3), func=shm_chi, parms=params, ageatBMT=76)) %>%
-  filter(time != 76) %>%
-  mutate(time_seq = time,
-         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
-         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
-         total_counts = counts_thy + counts_per,
-         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
-         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+Donor_pred1_df <- data.frame(t(Donor_ode_pred1)) %>%
+  mutate(time_seq = ts_pred1,
          donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12),
-         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
-         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
-         ageBMT_bin = 'agebin3') %>%
-  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+         donor_ki_per = (y11)/(y11 + y12)) %>%
+  select(time_seq, contains('donor'))
 
+Host_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 10)
 
-init_pred4 <-  ode(y=init_cond, times=c(40, 118), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
-init_cond4 <- c(init_pred4[1] + init_pred4[9], init_pred4[2] + init_pred4[10], init_pred4[3] + init_pred4[11],
-                init_pred4[4] + init_pred4[12], init_pred4[5], init_pred4[6], init_pred4[7], init_pred4[8],
-                y9=0,y10=0,y11=0,y12=0)
-
-R_ode_pred4 <- data.frame(ode(y=init_cond4,  times=c(118, ts_pred4), func=shm_chi, parms=params, ageatBMT=118)) %>%
-  filter(time != 118) %>%
-  mutate(time_seq = time,
-         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
-         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
-         total_counts = counts_thy + counts_per,
-         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
-         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+Host_pred1_df <- data.frame(t(Host_ode_pred1)) %>%
+  mutate(time_seq = data_time_hostki,
          donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12),
-         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
-         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
-         ageBMT_bin = 'agebin4') %>%
-  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+         donor_ki_per = (y11)/(y11 + y12)) %>%
+  select(time_seq, contains('host'))
 
+Donor_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 13)
 
-R_pred <- rbind(R_ode_pred1, R_ode_pred2, R_ode_pred3, R_ode_pred4)
+Donor_pred1_df <- data.frame(t(Donor_ode_pred1)) %>%
+  mutate(time_seq = ts_pred1,
+         donor_ki_thy = (y9)/(y9 + y10),
+         donor_ki_per = (y11)/(y11 + y12)) %>%
+  select(time_seq, contains('donor'))
+
+Host_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 10)
+
+Host_pred1_df <- data.frame(t(Host_ode_pred1)) %>%
+  mutate(time_seq = data_time_hostki,
+         donor_ki_thy = (y9)/(y9 + y10),
+         donor_ki_per = (y11)/(y11 + y12)) %>%
+  select(time_seq, contains('host'))
+
 
 myTheme <- theme(text = element_text(size = 12), axis.text = element_text(size = 12), axis.title =  element_text(size = 12, face = "bold"),
                  plot.title = element_text(size=12, face = 'bold',  hjust = 0.5), legend.text = element_text(size=12),
