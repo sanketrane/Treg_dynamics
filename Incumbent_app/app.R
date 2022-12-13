@@ -15,21 +15,24 @@ ui <- fluidPage(
       h4("Rates to explore"),
       fluidRow(
         withMathJax(),
-        column(4,
+        column(6,
                numericInput(
-                 "rho_D", label = helpText('$$\\alpha_D$$ Division of displaceable'), value = 0.0004, min = 0, max = 0.01, step = 0.0001
+                 "rho_D", label = helpText('$$\\alpha_D$$ Division of displaceable'), value = 0.011, min = 0, max = 1, step = 0.001
                  )),
-        column(4,
+        column(6,
                numericInput(
-                 "rho_I", label = helpText('$$\\alpha_I$$ Division of incumbent'), value = 0.04, min = 0, max = 1, step = 0.01
+                 "rho_I", label = helpText('$$\\alpha_I$$ Division of incumbent'), value = 0.055, min = 0, max = 1, step = 0.001
                  )),
+        #column(4,
+            #   numericInput(
+             #    "delta_D", label = helpText('$$\\delta_D$$ Loss of displaceable'), value = 0.027, min = 0, max = 0.5, step = 0.002
+             #  )),
+      ),
+      fluidRow(
+        withMathJax(),
         column(4,
                numericInput(
-                 "delta_D", label = helpText('$$\\delta_D$$ Loss of displaceable'), value = 0.027, min = 0, max = 0.5, step = 0.002
-               )),
-        column(4,
-               numericInput(
-                 "psi", label = helpText('$$\\psi$$ Influx'), value = 0.01, min = 0, max = 1, step = 0.01
+                 "psi", label = helpText('$$\\psi$$ Influx'), value = 0.011, min = 0, max = 1, step = 0.001
                )),
         column(4,
                numericInput(
@@ -37,26 +40,26 @@ ui <- fluidPage(
                )),
         column(4,
                numericInput(
-                 "beta", label = helpText('$$\\mu_b$$ Backcirculation'), value = 0.01, min = 0, max = 1, step = 0.01
+                 "beta", label = helpText('$$\\mu_b$$ Backcirculation'), value = 0.016, min = 0, max = 1, step = 0.001
                ))
       ),
-      
+      h4("Initial conditions"),
         fluidRow(
         column(3,
                numericInput(
-                 "f1", label = helpText('fraction Khi in y1'), value = 0.5, min = 0, max = 1, step = 0.1
+                 "f1", label = helpText('fraction Khi in y1'), value = 0.32, min = 0, max = 1, step = 0.1
                )),
         column(3,
                numericInput(
-                 "f2", label = helpText('fraction Khi in y2'), value = 0.5, min = 0, max = 1, step = 0.1
+                 "f2", label = helpText('fraction Khi in y2'), value = 0.54, min = 0, max = 1, step = 0.1
                )),
         column(3,
                numericInput(
-                 "f3", label = helpText('fraction Khi in y3'), value = 0.5, min = 0, max = 1, step = 0.1
+                 "f3", label = helpText('fraction Khi in y3'), value = 0.41, min = 0, max = 1, step = 0.1
                )),
         column(3,
                numericInput(
-                 "f4", label = helpText('fraction Khi in y4'), value = 0.5, min = 0, max = 1, step = 0.1
+                 "f4", label = helpText('fraction Khi in y4'), value = 0.32, min = 0, max = 1, step = 0.1
                ))
         )),
     
@@ -74,12 +77,11 @@ ui <- fluidPage(
 
 # Define server logic required to draw a histogram ----
 server <- function(input, output) {
-  
   simulate <- reactive({
     init_cond <- c(y1=input$f1 * exp(9.7), y2= (1 - input$f1) * exp(9.7), y3=input$f2 * exp(14.5), y4= (1 - input$f2) * exp(14.5), 
                    y5=input$f3 * exp(9.25), y6= (1 - input$f3) * exp(9.25), y7=input$f4 * exp(11.45), y8= (1 - input$f4) * exp(1.45),
                    y9=0, y10=0, y11=0, y12=0)
-    params <-  c(psi=input$psi, rho_D=input$rho_D, delta_D=input$delta_D + input$rho_D,
+    params <-  c(psi=input$psi, rho_D=input$rho_D, delta_D=0.0274 + input$rho_D,
                  alpha=input$alpha, rho_I=input$rho_I, delta_I=input$rho_I, beta=input$beta)
     
     
@@ -101,7 +103,7 @@ server <- function(input, output) {
              host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
              host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
              ageBMT_bin = 'agebin1') %>%
-      select(time_seq, ageBMT_bin, counts_thy, counts_per, Nfd_thy, Nfd_per, donor_ki_thy, donor_ki_per, host_ki_thy, host_ki_per)
+      select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
     
     init_pred2 <- ode(y=init_cond, times=c(40, 66), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
     init_cond2 <- c(init_pred2[1] + init_pred2[9], init_pred2[2] + init_pred2[10], init_pred2[3] + init_pred2[11],
@@ -121,7 +123,7 @@ server <- function(input, output) {
              host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
              host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
              ageBMT_bin = 'agebin2') %>%
-      select(time_seq, ageBMT_bin, counts_thy, counts_per, Nfd_thy, Nfd_per, donor_ki_thy, donor_ki_per, host_ki_thy, host_ki_per)
+      select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
     
     
     init_pred3 <-  ode(y=init_cond, times=c(40, 76), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
@@ -142,7 +144,7 @@ server <- function(input, output) {
              host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
              host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
              ageBMT_bin = 'agebin3') %>%
-      select(time_seq, ageBMT_bin, counts_thy, counts_per, Nfd_thy, Nfd_per, donor_ki_thy, donor_ki_per, host_ki_thy, host_ki_per)
+      select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
     
     
     init_pred4 <-  ode(y=init_cond, times=c(40, 118), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
@@ -163,11 +165,10 @@ server <- function(input, output) {
              host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
              host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
              ageBMT_bin = 'agebin4') %>%
-      select(time_seq, ageBMT_bin, counts_thy, counts_per, Nfd_thy, Nfd_per, donor_ki_thy, donor_ki_per, host_ki_thy, host_ki_per)
+      select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
     
     
     rbind(R_ode_pred1, R_ode_pred2, R_ode_pred3, R_ode_pred4)
-    
   })
   
   output$distPlot1 <- renderPlot({

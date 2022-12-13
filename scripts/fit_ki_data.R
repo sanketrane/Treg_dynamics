@@ -56,11 +56,6 @@ chi_spline <- function(Time){ifelse(Time-10 >0,
                                     0.81548689 * (1 - exp(-0.06286984 * (Time - 10))), 0)}
 Donor_eps_spline <- function(Time){exp(- 0.06799028 * (Time - 49)) + 0.37848471}
 
-chivec1 <- sapply(ts_pred1-tb_pred1, chi_spline)
-chivec2 <- sapply(ts_pred2-tb_pred2, chi_spline)
-chivec3 <- sapply(ts_pred3-tb_pred3, chi_spline)
-chivec4 <- sapply(ts_pred4-tb_pred4, chi_spline)
-
 
 ## ODE System
 shm_chi <- function (Time, ageatBMT, y, parms) {
@@ -134,9 +129,8 @@ expit_trans <- function(x){
 }
 
 
-
-##fitting log N_total & logit ki_prop to the transformed NCD4 data
-LL_fit <- function(params, boot_data1, boot_data2) { 
+##fitting logit ki_prop to the transformed data
+LL_fit <- function(params, boot_data) { 
    ## model predictions
   Donor_ode_sol <- mcmapply(sol_ode_par, Time=data_time_donorki, 
                             tb=tb_time_donorki, MoreArgs = list(params), mc.cores = 13)
@@ -161,10 +155,10 @@ LL_fit <- function(params, boot_data1, boot_data2) {
   host_ki_per_pred  <- logit_trans(Host_sol_df$host_ki_per)
   
   ### data
-  donor_ki_thy_obs <- logit_trans(boot_data1$Ki67_naiveTregs_thy)
-  donor_ki_per_obs <- logit_trans(boot_data1$Ki67_naiveTregs_per)
-  host_ki_thy_obs  <- logit_trans(boot_data2$Ki67_naiveTregs_thy)
-  host_ki_per_obs  <- logit_trans(boot_data2$Ki67_naiveTregs_per)
+  donor_ki_thy_obs <- logit_trans(boot_data %>% filter(subcomp == 'Donor') %>% filter(location == 'Thymus') %>% pull(prop_ki))
+  donor_ki_per_obs <- logit_trans(boot_data %>% filter(subcomp == 'Donor') %>% filter(location == 'Periphery') %>% pull(prop_ki))
+  host_ki_thy_obs  <- logit_trans(boot_data %>% filter(subcomp == 'Host') %>% filter(location == 'Thymus') %>% pull(prop_ki))
+  host_ki_per_obs  <- logit_trans(boot_data %>% filter(subcomp == 'Host') %>% filter(location == 'Periphery') %>% pull(prop_ki))
   
   ## calculating the sun of squared residuals
   ssqres1 <- sum((donor_ki_thy_obs - donor_ki_thy_pred)^2)
@@ -173,8 +167,8 @@ LL_fit <- function(params, boot_data1, boot_data2) {
   ssqres4 <- sum((host_ki_per_obs - host_ki_per_pred)^2)
   
   k  <- length(params)                #number of unknown parameters 
-  n1 <- nrow(boot_data1)         #number of observations in dataset1
-  n2 <- nrow(boot_data2)           #number of observations in dataset1
+  n1 <- length(donor_ki_thy_obs)               #number of observations in dataset1
+  n2 <- length(host_ki_thy_obs)           #number of observations in dataset1
   
   #cost function
   #log-likelihood ignoring all the terms dependent only on the number of observations n
@@ -185,75 +179,61 @@ LL_fit <- function(params, boot_data1, boot_data2) {
   return(-logl)     #since optim minimizes the function by default, ML
 } 
 
-optim_fit <- optim(par = params_new, fn = LL_fit, boot_data1 = donorki_data, boot_data2=hostki_data,
+optim_fit <- optim(par = params_new, fn = LL_fit, boot_data = ki_data,
                    method=c("Nelder-Mead"), control = list(trace = 1, maxit = 2000))
 
+## Estimated Parameters 
 optim_fit$par
-par_est <- optim_fit$par
+par_est <-  c(0.01117145, 0.05475976, 0.32904472, 0.57276803, 0.40588384, 0.32250938)#optim_fit$par
 
+## AIC calculation
 AIC_est <- 2 * length(optim_fit$par) + 2 * optim_fit$value
 print(paste0("Estimated parameters are: ", optim_fit$par))
 print(paste0("AIC value is: ", AIC_est))
 
+write.table(par_est, file = file.path("par_table.csv"),
+            sep = ",", append = F, quote = FALSE,
+            col.names = F, row.names = FALSE)
 
 # time sequence for predictions specific to age bins within the data
-ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
-ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
-ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
-ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
+ts_pred1 <- round(10^seq(log10(66), log10(450), length.out = 300), 0)
+ts_pred2 <- round(10^seq(log10(91), log10(450), length.out = 300), 0)
+ts_pred3 <- round(10^seq(log10(90), log10(450), length.out = 300), 0)
+ts_pred4 <- round(10^seq(log10(174), log10(450), length.out = 300), 0)
 tb_pred1 <- rep(45, 300)
 tb_pred2 <- rep(66, 300)
 tb_pred3 <- rep(76, 300)
 tb_pred4 <- rep(118, 300)
 
-Donor_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 13)
+Donor_ode_pred1 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(par_est), mc.cores = 13)))
+Donor_ode_pred2 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred2, tb=tb_pred2, MoreArgs = list(par_est), mc.cores = 13)))
+Donor_ode_pred3 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred3, tb=tb_pred3, MoreArgs = list(par_est), mc.cores = 13)))
+Donor_ode_pred4 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred4, tb=tb_pred4, MoreArgs = list(par_est), mc.cores = 13)))
 
-Donor_pred1_df <- data.frame(t(Donor_ode_pred1)) %>%
-  mutate(time_seq = ts_pred1,
+Donor_pred_df <- rbind(Donor_ode_pred1, Donor_ode_pred2, Donor_ode_pred3, Donor_ode_pred4) %>%
+  mutate(time_seq = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4),
+         tb_seq = c(tb_pred1, tb_pred2, tb_pred3, tb_pred4),
          donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12)) %>%
-  select(time_seq, contains('donor'))
+         donor_ki_per = (y11)/(y11 + y12),
+         ageBMT_bin = ifelse(tb_seq == 45, 'agebin1',
+                             ifelse(tb_seq == 66, 'agebin2',
+                                    ifelse(tb_seq == 76, 'agebin3', 'agebin4')))) %>%
+  select(time_seq, ageBMT_bin, contains('donor')) 
 
-Host_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 10)
+Host_ode_pred1 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(par_est), mc.cores = 15)))
+Host_ode_pred2 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred2, tb=tb_pred2, MoreArgs = list(par_est), mc.cores = 15)))
+Host_ode_pred3 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred3, tb=tb_pred3, MoreArgs = list(par_est), mc.cores = 15)))
+Host_ode_pred4 <- data.frame(t(mcmapply(sol_ode_par, Time=ts_pred4, tb=tb_pred4, MoreArgs = list(par_est), mc.cores = 15)))
 
-Host_pred1_df <- data.frame(t(Host_ode_pred1)) %>%
-  mutate(time_seq = data_time_hostki,
-         donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12)) %>%
-  select(time_seq, contains('host'))
-
-Donor_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 13)
-
-Donor_pred1_df <- data.frame(t(Donor_ode_pred1)) %>%
-  mutate(time_seq = ts_pred1,
-         donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12)) %>%
-  select(time_seq, contains('donor'))
-
-Host_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 10)
-
-Host_pred1_df <- data.frame(t(Host_ode_pred1)) %>%
-  mutate(time_seq = data_time_hostki,
-         donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12)) %>%
-  select(time_seq, contains('host'))
-
-Donor_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 13)
-
-Donor_pred1_df <- data.frame(t(Donor_ode_pred1)) %>%
-  mutate(time_seq = ts_pred1,
-         donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12)) %>%
-  select(time_seq, contains('donor'))
-
-Host_ode_pred1 <- mcmapply(sol_ode_par, Time=ts_pred1, tb=tb_pred1, MoreArgs = list(params_new), mc.cores = 10)
-
-Host_pred1_df <- data.frame(t(Host_ode_pred1)) %>%
-  mutate(time_seq = data_time_hostki,
-         donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12)) %>%
-  select(time_seq, contains('host'))
-
+Host_pred_df <- rbind(Host_ode_pred1, Host_ode_pred2, Host_ode_pred3, Host_ode_pred4) %>%
+  mutate(time_seq = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4),
+         tb_seq = c(tb_pred1, tb_pred2, tb_pred3, tb_pred4),
+         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
+         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
+         ageBMT_bin = ifelse(tb_seq == 45, 'agebin1',
+                             ifelse(tb_seq == 66, 'agebin2',
+                                    ifelse(tb_seq == 76, 'agebin3', 'agebin4')))) %>%
+  select(time_seq, ageBMT_bin, contains('host'))
 
 myTheme <- theme(text = element_text(size = 12), axis.text = element_text(size = 12), axis.title =  element_text(size = 12, face = "bold"),
                  plot.title = element_text(size=12, face = 'bold',  hjust = 0.5), legend.text = element_text(size=12),
@@ -262,63 +242,12 @@ myTheme <- theme(text = element_text(size = 12), axis.text = element_text(size =
 # setting ggplot theme for rest fo the plots
 theme_set(theme_bw())
 
-fancy_scientific <- function(l) {
-  # turn in to character string in scientific notation
-  l <- format(l, scientific = TRUE)
-  # quote the part before the exponent to keep all the digits
-  l <- gsub("^(.*)e", "'\\1'e", l)
-  # remove + after exponent, if exists. E.g.: (e^+2 -> e^2)
-  l <- gsub("e\\+","e",l)  
-  # turn the 'e' into plotmath format
-  l <- gsub("e", "%*%10^", l)
-  # convert 1x10^ or 1.000x10^ -> 10^
-  l <- gsub("\\'1[\\.0]*\\'\\%\\*\\%", "", l)
-  # return this as an expression
-  parse(text=l)
-}
-
-log10minorbreaks=as.numeric(1:10 %o% 10^(4:8))
-
 legn_labels <- c('6-8', '8-10', '10-12', '12-25')
 fac_labels <- c(`agebin1`= '6-8 weeks', `agebin2`= '8-10 weeks', `agebin3`= '10-12 weeks', `agebin4`= '12-25 weeks')
 
-## Total counts
-Counts_pred <- R_pred %>%
-  select(time_seq, ageBMT_bin, contains('counts')) %>%
-  rename(Thymus = counts_thy,
-         Periphery = counts_per) %>%
-  gather(c(Thymus, Periphery), key='location', value = 'total_counts')
-
-p1 <- ggplot() +
-  geom_line(data = Counts_pred, aes(x = time_seq, y = total_counts, color = ageBMT_bin)) +
-  geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
-  labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 
-  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
-  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
-  scale_y_continuous(limits = c(5e3, 5e6), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
-  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
-  guides(fill = 'none') + myTheme 
-
-
-# Normalised donor fractions
-Nfd_pred <- R_pred %>%
-  select(time_seq, ageBMT_bin, contains('Nfd')) %>%
-  rename(Thymus = Nfd_thy,
-         Periphery = Nfd_per) %>%
-  gather(c(Thymus, Periphery), key='location', value = 'Nfd')
-
-p2 <- ggplot() +
-  geom_line(data = Nfd_pred, aes(x = time_seq, y = Nfd, color = ageBMT_bin)) +
-  geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
-  labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
-  scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
-  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
-  scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) + 
-  facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
-  guides(fill='none')+ myTheme
-
 # Thymic Ki67 fractions
-ki_thy_pred <- R_pred %>%
+ki_thy_pred <- Donor_pred_df %>%
+  full_join(Host_pred_df, by = c("time_seq", "ageBMT_bin")) %>%
   select(time_seq, ageBMT_bin, contains('ki_thy')) %>%
   rename(Donor = donor_ki_thy,
          Host = host_ki_thy) %>%
@@ -334,8 +263,11 @@ p3 <- ggplot() +
   facet_wrap(~ ageBMT_bin, scales = 'free', labeller = as_labeller(fac_labels))+
   guides(fill='none') + myTheme + theme(legend.title = element_blank())
 
+ggsave('Ki_Thy_pred.pdf', p3,  device = "pdf", width=10, height = 7, units = 'in')
+
 # Peripheral Ki67 fractions
-ki_per_pred <- R_pred %>%
+ki_per_pred <- Donor_pred_df %>%
+  full_join(Host_pred_df, by = c("time_seq", "ageBMT_bin")) %>%
   select(time_seq, ageBMT_bin, contains('ki_per')) %>%
   rename(Donor = donor_ki_per,
          Host = host_ki_per) %>%
@@ -351,6 +283,4 @@ p4 <- ggplot() +
   facet_wrap(~ ageBMT_bin, scales = 'free', labeller = as_labeller(fac_labels))+
   guides(fill='none') + myTheme + theme(legend.title = element_blank())
 
-cowplot::plot_grid(p1, p2, nrow = 2)
-
-
+ggsave('Ki_Per_pred.pdf', p4,  device = "pdf", width=10, height = 7, units = 'in')

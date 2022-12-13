@@ -43,14 +43,16 @@ donorki_data <- read.csv(donorki_file) %>%
 
 ki_data <- rbind(donorki_data, hostki_data)
 
-#init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
-#               0,0,0,0,0,0,0,0)
-init_cond <- c("y1"=0.5 * exp(9.7), "y2"= 0.5 *  exp(9.7), "y3"= 0.5 *  exp(14.5), "y4"= 0.5 *  exp(14.5), "y5"= 0.5 *  exp(9.25), "y6"= 0.5 *  exp(9.25),
-               "y7"= 0.5 *  exp(11.45), "y8" = 0.5 *  exp(11.45), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
-#init_cond <- c("y1"=exp(9.6), "y2"= exp(14.3), "y3"=exp(9.1), "y4"=exp(11.9), "y5"=0, "y6"=0)
+init_cond_full <- c("y1"=0.5 * exp(9.7), "y2"= 0.5 *  exp(9.7),
+                    "y3"= 0.5 *  exp(14.5), "y4"= 0.5 *  exp(14.5), 
+                    "y5"= 0.5 *  exp(9.25), "y6"= 0.5 *  exp(9.25),
+                    "y7"= 0.5 *  exp(11.45), "y8" = 0.5 *  exp(11.45),
+                    "y9"=0, "y10"=0, "y11"=0, "y12"=0)
 
-params <- c(psi=0.008099747, rho_D=0.0004, alpha=0.638427240, delta_D=0.020695076 + 0.0004, rho_I=0.04, beta=0.011862542)
-#params <- c(psi=0.011, alpha=0.83, delta_D=0.027, delta_I=0.001, beta=0.015)
+init_cond_simple <- c("y1"=exp(9.7), "y2"= exp(14.5), "y3"=exp(9.25), "y4"=exp(11.45), "y5"=0, "y6"=0)
+
+params_full <- c(psi=0.011, rho_D=0.0004, alpha=0.638427240, delta_D=0.020695076 + 0.0004, rho_I=0.04, beta=0.011862542)
+params_simple <- c(psi=0.011, alpha=0.83, delta_D=0.027, delta_I=0, beta=0.012)
 
 #data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
 
@@ -77,10 +79,35 @@ chivec3 <- sapply(ts_pred3-tb_pred3, chi_spline)
 chivec4 <- sapply(ts_pred4-tb_pred4, chi_spline)
 
 ## ODE System
-shm_chi <- function (Time, ageatBMT, y, parms) {
+shm_simple <- function (Time, ageatBMT, y, parms) {
+  with(as.list(c(y, parms)),{
+    # Host compartment
+    #Thymic displaceable
+    dy1 <- Theta_spline(Time, psi) * (1- chi_spline(Time - ageatBMT)) + beta * y2 - (alpha + delta_D) * y1
+    #Peripheral displaceable
+    dy2 <- alpha * y1 - (beta + delta_D) * y2
+    #Peripheral Incumbent
+    dy3 <- alpha * y4 - (beta + delta_I) * y3
+    #Thymics Incumbent
+    dy4 <- beta * y3 - (alpha + delta_I) * y4
+    
+    # Donor compartment
+    #Thymic displaceable
+    dy5 <- Theta_spline(Time, psi) * chi_spline(Time - ageatBMT) + beta * y6  - (alpha + delta_D) * y5
+    #Peripheral displaceable
+    dy6 <- alpha * y5 - (beta + delta_D) * y6
+    
+    list(c(dy1, dy2, dy3, dy4, dy5, dy6))
+  })
+}
+
+
+## ODE System
+shm_full <- function (Time, ageatBMT, y, parms) {
   eps_host = 0.326611
   kloss = 1/3.5
   with(as.list(c(y, parms)),{
+    # Host compartment
     dy1 <- Theta_spline(Time, psi) * (1- chi_spline(Time - ageatBMT)) * eps_host + rho_D * (2 * y2 + y1) + beta * y3 - (kloss + alpha + delta_D) * y1
     dy2 <- Theta_spline(Time, psi) * (1- chi_spline(Time - ageatBMT)) * (1 - eps_host) + kloss * y1 + beta * y4  - (rho_D + alpha + delta_D) * y2
     dy3 <- alpha * y1 + rho_D * (2 * y4 + y3) - (kloss + beta + delta_D) * y3
@@ -90,6 +117,7 @@ shm_chi <- function (Time, ageatBMT, y, parms) {
     dy7 <- beta * y5 + rho_I * (2 * y8 + y7) - (kloss + alpha + rho_I) * y7
     dy8 <- beta * y6 + kloss * y7 - (rho_I + alpha + rho_I) * y8
     
+    # Donor compartment
     dy9 <- Theta_spline(Time, psi) * chi_spline(Time - ageatBMT) * Donor_eps_spline(Time)+ rho_D * (2 * y10 + y9) + beta * y11  - (kloss + alpha + delta_D) * y9
     dy10 <- Theta_spline(Time, psi) * chi_spline(Time - ageatBMT) * (1 - Donor_eps_spline(Time)) + kloss * y9 + beta * y12  - (rho_D + alpha + delta_D) * y10
     dy11 <- alpha * y9 + rho_D * (2 * y12 + y11) - (kloss + beta + delta_D) * y11
@@ -100,12 +128,12 @@ shm_chi <- function (Time, ageatBMT, y, parms) {
   })
 }
 
+
 ## initial conditions at ageatBMTs
-init_pred1 <- ode(y=init_cond, times=c(40, 45), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
-init_cond1 <- c(init_pred1[1] + init_pred1[9], init_pred1[2] + init_pred1[10], init_pred1[3] + init_pred1[11],
-                init_pred1[4] + init_pred1[12], init_pred1[5], init_pred1[6], init_pred1[7], init_pred1[8],
-                y9=0,y10=0,y11=0,y12=0)
-R_ode_pred1 <- data.frame(ode(y=init_cond1, times=c(45, ts_pred1), func=shm_chi, parms=params, ageatBMT=45)) %>%
+init_pred_simple1 <- ode(y=init_cond_simple, times=c(40, 45), func=shm_simple, parms=params_simple, ageatBMT=40)[2,2:7]
+init_cond_simple1 <- c(init_pred_simple1[1] + init_pred_simple1[5], init_pred_simple1[2] + init_pred_simple1[6], init_pred_simple1[3],
+                       init_pred_simple1[4], y5=0,y6=0)
+R_simple_pred1 <- data.frame(ode(y=init_cond1, times=c(45, ts_pred1), func=shm_full, parms=params, ageatBMT=45)) %>%
   filter(time != 45) %>%
   mutate(time_seq = time,
          counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
@@ -113,19 +141,15 @@ R_ode_pred1 <- data.frame(ode(y=init_cond1, times=c(45, ts_pred1), func=shm_chi,
          total_counts = counts_thy + counts_per,
          Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
          Nfd_per = (y11 + y12)/(counts_per * chivec4),
-         donor_ki_thy = (y9)/(y9 + y10),
-         donor_ki_per = (y11)/(y11 + y12),
-         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
-         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
          ageBMT_bin = 'agebin1') %>%
   select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
 
-init_pred2 <- ode(y=init_cond, times=c(40, 66), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
+init_pred2 <- ode(y=init_cond, times=c(40, 66), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
 init_cond2 <- c(init_pred2[1] + init_pred2[9], init_pred2[2] + init_pred2[10], init_pred2[3] + init_pred2[11],
                 init_pred2[4] + init_pred2[12], init_pred2[5], init_pred2[6], init_pred2[7], init_pred2[8],
                 y9=0,y10=0,y11=0,y12=0)
 
-R_ode_pred2 <- data.frame(ode(y=init_cond2,  times=c(66, ts_pred2), func=shm_chi, parms=params, ageatBMT=66)) %>%
+R_ode_pred2 <- data.frame(ode(y=init_cond2,  times=c(66, ts_pred2), func=shm_full, parms=params, ageatBMT=66)) %>%
   filter(time != 66) %>%
   mutate(time_seq = time,
          counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
@@ -141,12 +165,12 @@ R_ode_pred2 <- data.frame(ode(y=init_cond2,  times=c(66, ts_pred2), func=shm_chi
   select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
 
 
-init_pred3 <-  ode(y=init_cond, times=c(40, 76), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
+init_pred3 <-  ode(y=init_cond, times=c(40, 76), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
 init_cond3 <- c(init_pred3[1] + init_pred3[9], init_pred3[2] + init_pred3[10], init_pred3[3] + init_pred3[11],
                 init_pred3[4] + init_pred3[12], init_pred3[5], init_pred3[6], init_pred3[7], init_pred3[8],
                 y9=0,y10=0,y11=0,y12=0)
 
-R_ode_pred3 <-data.frame(ode(y=init_cond3,  times=c(76, ts_pred3), func=shm_chi, parms=params, ageatBMT=76)) %>%
+R_ode_pred3 <-data.frame(ode(y=init_cond3,  times=c(76, ts_pred3), func=shm_full, parms=params, ageatBMT=76)) %>%
   filter(time != 76) %>%
   mutate(time_seq = time,
          counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
@@ -162,12 +186,97 @@ R_ode_pred3 <-data.frame(ode(y=init_cond3,  times=c(76, ts_pred3), func=shm_chi,
   select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
 
 
-init_pred4 <-  ode(y=init_cond, times=c(40, 118), func=shm_chi, parms=params, ageatBMT=40)[2,2:13]
+init_pred4 <-  ode(y=init_cond, times=c(40, 118), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
 init_cond4 <- c(init_pred4[1] + init_pred4[9], init_pred4[2] + init_pred4[10], init_pred4[3] + init_pred4[11],
                 init_pred4[4] + init_pred4[12], init_pred4[5], init_pred4[6], init_pred4[7], init_pred4[8],
                 y9=0,y10=0,y11=0,y12=0)
 
-R_ode_pred4 <- data.frame(ode(y=init_cond4,  times=c(118, ts_pred4), func=shm_chi, parms=params, ageatBMT=118)) %>%
+R_ode_pred4 <- data.frame(ode(y=init_cond4,  times=c(118, ts_pred4), func=shm_full, parms=params, ageatBMT=118)) %>%
+  filter(time != 118) %>%
+  mutate(time_seq = time,
+         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
+         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
+         total_counts = counts_thy + counts_per,
+         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
+         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+         donor_ki_thy = (y9)/(y9 + y10),
+         donor_ki_per = (y11)/(y11 + y12),
+         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
+         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
+         ageBMT_bin = 'agebin4') %>%
+  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+
+
+R_pred <- rbind(R_ode_pred1, R_ode_pred2, R_ode_pred3, R_ode_pred4)
+
+## initial conditions at ageatBMTs
+init_pred1 <- ode(y=init_cond, times=c(40, 45), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
+init_cond1 <- c(init_pred1[1] + init_pred1[9], init_pred1[2] + init_pred1[10], init_pred1[3] + init_pred1[11],
+                init_pred1[4] + init_pred1[12], init_pred1[5], init_pred1[6], init_pred1[7], init_pred1[8],
+                y9=0,y10=0,y11=0,y12=0)
+R_ode_pred1 <- data.frame(ode(y=init_cond1, times=c(45, ts_pred1), func=shm_full, parms=params, ageatBMT=45)) %>%
+  filter(time != 45) %>%
+  mutate(time_seq = time,
+         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
+         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
+         total_counts = counts_thy + counts_per,
+         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
+         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+         donor_ki_thy = (y9)/(y9 + y10),
+         donor_ki_per = (y11)/(y11 + y12),
+         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
+         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
+         ageBMT_bin = 'agebin1') %>%
+  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+
+init_pred2 <- ode(y=init_cond, times=c(40, 66), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
+init_cond2 <- c(init_pred2[1] + init_pred2[9], init_pred2[2] + init_pred2[10], init_pred2[3] + init_pred2[11],
+                init_pred2[4] + init_pred2[12], init_pred2[5], init_pred2[6], init_pred2[7], init_pred2[8],
+                y9=0,y10=0,y11=0,y12=0)
+
+R_ode_pred2 <- data.frame(ode(y=init_cond2,  times=c(66, ts_pred2), func=shm_full, parms=params, ageatBMT=66)) %>%
+  filter(time != 66) %>%
+  mutate(time_seq = time,
+         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
+         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
+         total_counts = counts_thy + counts_per,
+         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
+         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+         donor_ki_thy = (y9)/(y9 + y10),
+         donor_ki_per = (y11)/(y11 + y12),
+         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
+         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
+         ageBMT_bin = 'agebin2') %>%
+  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+
+
+init_pred3 <-  ode(y=init_cond, times=c(40, 76), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
+init_cond3 <- c(init_pred3[1] + init_pred3[9], init_pred3[2] + init_pred3[10], init_pred3[3] + init_pred3[11],
+                init_pred3[4] + init_pred3[12], init_pred3[5], init_pred3[6], init_pred3[7], init_pred3[8],
+                y9=0,y10=0,y11=0,y12=0)
+
+R_ode_pred3 <-data.frame(ode(y=init_cond3,  times=c(76, ts_pred3), func=shm_full, parms=params, ageatBMT=76)) %>%
+  filter(time != 76) %>%
+  mutate(time_seq = time,
+         counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
+         counts_per = y3 + y4 + y5 + y6 + y11 + y12,
+         total_counts = counts_thy + counts_per,
+         Nfd_thy = (y9 + y10)/(counts_thy * chivec4),
+         Nfd_per = (y11 + y12)/(counts_per * chivec4),
+         donor_ki_thy = (y9)/(y9 + y10),
+         donor_ki_per = (y11)/(y11 + y12),
+         host_ki_thy = (y1 + y7)/(y1 + y2 + y7 + y8),
+         host_ki_per = (y3 + y5)/(y3 + y4 + y5 + y6),
+         ageBMT_bin = 'agebin3') %>%
+  select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
+
+
+init_pred4 <-  ode(y=init_cond, times=c(40, 118), func=shm_full, parms=params, ageatBMT=40)[2,2:13]
+init_cond4 <- c(init_pred4[1] + init_pred4[9], init_pred4[2] + init_pred4[10], init_pred4[3] + init_pred4[11],
+                init_pred4[4] + init_pred4[12], init_pred4[5], init_pred4[6], init_pred4[7], init_pred4[8],
+                y9=0,y10=0,y11=0,y12=0)
+
+R_ode_pred4 <- data.frame(ode(y=init_cond4,  times=c(118, ts_pred4), func=shm_full, parms=params, ageatBMT=118)) %>%
   filter(time != 118) %>%
   mutate(time_seq = time,
          counts_thy = y1 + y2 + y7 + y8 + y9 + y10,
