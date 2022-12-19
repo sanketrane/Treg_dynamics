@@ -5,6 +5,10 @@ ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
 ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
 ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
 ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
+tb_pred1 <- rep(45, 300)
+tb_pred2 <- rep(66, 300)
+tb_pred3 <- rep(76, 300)
+tb_pred4 <- rep(118, 300)
 
 # naive Treg counts in the thymus with 90% envelopes
 Counts_thy_pred <- as.data.frame(fit, pars = c("counts_thy_mean_pred1", "counts_thy_mean_pred2",
@@ -32,7 +36,8 @@ Nfd_thy_pred <- as.data.frame(fit, pars = c("Nfd_thy_mean_pred1", "Nfd_thy_mean_
   summarize(lb = quantile(value, probs = 0.05),
             median = quantile(value, probs = 0.5),
             ub = quantile(value, probs = 0.95))  %>%
-  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  bind_cols("timeseries" = c(ts_pred1 - tb_pred1, ts_pred2 - tb_pred2, 
+                             ts_pred3 - tb_pred3, ts_pred4 - tb_pred4))%>%
   mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
@@ -65,7 +70,8 @@ Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_
   summarize(lb = quantile(value, probs = 0.05),
             median = quantile(value, probs = 0.5),
             ub = quantile(value, probs = 0.95)) %>%
-  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  bind_cols("timeseries" = c(ts_pred1 - tb_pred1, ts_pred2 - tb_pred2, 
+                             ts_pred3 - tb_pred3, ts_pred4 - tb_pred4))%>%
   mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),

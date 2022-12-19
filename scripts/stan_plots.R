@@ -156,10 +156,10 @@ ggplot() +
 ggplot() +
   geom_ribbon(data = Nfd_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
   geom_line(data = Nfd_pred, aes(x = timeseries, y = median, color = ageBMT_bin)) +
-  geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
-  labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
+  geom_point(data = Nfd_data, aes(x = age.at.S1K - age.at.BMT, y = Nfd, color = ageBMT_bin), size=2) +
+  labs(x = "Days post BMT", y = NULL, title = "Normalised Chimerism in naive Tregs") +
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
-  scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
+  scale_x_continuous(limits = c(1, 350), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) + 
   facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
   guides(fill='none')+ myTheme
