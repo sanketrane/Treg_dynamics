@@ -167,8 +167,8 @@ LL_fit <- function(params, boot_data) {
   ssqres4 <- sum((host_ki_per_obs - host_ki_per_pred)^2)
   
   k  <- length(params)                #number of unknown parameters 
-  n1 <- length(donor_ki_thy_obs)      #number of observations in dataset1
-  n2 <- length(host_ki_thy_obs)       #number of observations in dataset1
+  n1 <- length(donor_ki_thy_obs)               #number of observations in dataset1
+  n2 <- length(host_ki_thy_obs)           #number of observations in dataset1
   
   #cost function
   #log-likelihood ignoring all the terms dependent only on the number of observations n
@@ -184,7 +184,7 @@ optim_fit <- optim(par = params_new, fn = LL_fit, boot_data = ki_data,
 
 ## Estimated Parameters 
 optim_fit$par
-par_est <- optim_fit$par
+par_est <-  c(0.01117145, 0.05475976, 0.32904472, 0.57276803, 0.40588384, 0.32250938)#optim_fit$par
 
 ## AIC calculation
 AIC_est <- 2 * length(optim_fit$par) + 2 * optim_fit$value

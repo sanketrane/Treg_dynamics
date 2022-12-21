@@ -267,7 +267,7 @@ Treg_donorKi67 %>%
          subcomp = ifelse(grepl("donor", Pop_of_interest), "Donor", "Host"),
          subpop = ifelse(grepl("naive", Pop_of_interest), "Naive", "Memory")) %>%
   ggplot(aes(x = time.post.BMT, y = Propn_Ki67)) +
-  geom_point(aes(col=subcomp), size=2) + ylim(0, 0.6) +
+  geom_point(aes(col=subcomp), size=2) + ylim(0, 0.5) +
   scale_color_manual(values = c(7, 2, 4), name = NULL) +
   labs(x = "Days post BMT", y = NULL, title = NULL) +
   facet_grid(Tissue_location~ subpop) +
