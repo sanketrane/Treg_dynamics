@@ -76,9 +76,9 @@ ki_host_thy <- hostki_data$Thymus
 
 logit_transf <- function(x){log(x/(1-x))}
 asinsq_transf <- function(x){asin(sqrt(x))}
-asinsq_transf(Nfd_per)
-plot(logit_transf(Nfd_thy)~data_time_chi)
-plot(asinsq_transf(Nfd_thy)~data_time_chi, col=2)
+logit_transf(Nfd_thy)
+plot(log(counts_thy)~data_time_counts, ylim = c(1, 16))
+points(log(counts_per)~data_time_counts, col=2)
 
 ## defining the function to calculate mode of a vector series
 getmode <- function(v) {
