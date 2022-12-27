@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent"
+modelName <- "Incumbent_full"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
