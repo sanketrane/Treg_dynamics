@@ -28,7 +28,7 @@ per0 <- init_cond[3] + init_cond[4] + init_cond[5] + init_cond[6] + init_cond[11
 
 
 # time sequence for predictions specific to age bins within the data
-ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
+ts_pred1 <- 10^seq(log10(45), log10(450), length.out = 300)
 ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
 ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
 ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
@@ -113,10 +113,10 @@ ggplot() +
   geom_hline(yintercept = thy0, col='darkred', size=2)+
   geom_hline(yintercept = per0, col='navy', size=2)+
   geom_line(data = Stan_pred, aes(x = time_seq, y = counts_thy, color = ageBMT_bin), linetype=2) +
-  geom_line(data = Stan_pred, aes(x = time_seq, y = counts_per, color = ageBMT_bin), linetype=1) +
-  geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
+  #geom_line(data = Stan_pred, aes(x = time_seq, y = counts_per, color = ageBMT_bin), linetype=1) +
+  geom_point(data = filter(counts_data, location == 'Thymus'), aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
   labs(title=paste('Total counts of thymic naive Tregs'),  y=NULL, x= "Host age (days)") + 
-  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
+  scale_x_continuous(limits = c(40, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
   scale_y_log10() 
 
 ggplot() +

@@ -72,7 +72,6 @@ num_pars_M2 <- which(fit2@model_pars %in% "sigma_counts_per") -1
 params_M2 <- fit2@model_pars[1:num_pars_M2]
 
 
-
 # compiling multiple stan objects together that ran on different nodes
 stanfitM3.1 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c1", ".csv")))
 stanfitM3.2 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c2",".csv")))
@@ -87,22 +86,22 @@ params_M3 <- fit3@model_pars[1:num_pars_M3]
 
 
 ptable1 <- monitor(as.array(fit1, pars = params_M1), warmup = 0, print = FALSE)
-out_table1 <- ptable1[1:num_pars_M1, c(1, 4, 8)]
+out_table1 <- data.frame(ptable1[1:num_pars_M1, c(1, 4, 8)])
 names(out_table1) <- c('Estimates', 'par_lb', 'par_ub')
 
 ptable2 <- monitor(as.array(fit2, pars = params_M2), warmup = 0, print = FALSE)
-out_table2 <- ptable2[1:num_pars_M2, c(1, 4, 8)] 
+out_table2 <- data.frame(ptable2[1:num_pars_M2, c(1, 4, 8)])
 names(out_table2) <- c('Estimates', 'par_lb', 'par_ub')
 
 
 ptable3 <- monitor(as.array(fit3, pars = params_M3), warmup = 0, print = FALSE)
-out_table3 <- ptable3[1:num_pars_M3, c(1, 4, 8)]
+out_table3 <- data.frame(ptable3[1:num_pars_M3, c(1, 4, 8)])
 names(out_table3) <- c('Estimates', 'par_lb', 'par_ub')
 
 
-df_pars <- rbind(out_table1, out_table2, out_table3) %>%
-  mutate(parname = c(row.names(out_table1), row.names(out_table2), row.names(out_table3)),
-         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2), rep('M3', num_pars_M3)))
+df_pars <- rbind(out_table1, out_table2) %>%
+  mutate(parname = c(row.names(out_table1), row.names(out_table2)),
+         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2)))
 
 blank_data <- data.frame(parname = rep(c("alpha", "delta", "sigma"), 3),
                          Param = rep(c("Rate of influx", "Loss rate", "Sigma"), 3),
