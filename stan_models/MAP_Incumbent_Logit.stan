@@ -421,8 +421,8 @@ model{
 
   log(counts_thy) ~ normal(log(counts_thy_mean), sigma_counts_thy);
   log(counts_per) ~ normal(log(counts_per_mean), sigma_counts_per);
-  asinsqrt_array(Nfd_thy) ~ normal(asinsqrt_array(to_array_1d(Nfd_thy_mean)), sigma_Nfd_thy);
-  asinsqrt_array(Nfd_per) ~ normal(asinsqrt_array(to_array_1d(Nfd_per_mean)), sigma_Nfd_per);
+  logit(Nfd_thy) ~ normal(logit(to_array_1d(Nfd_thy_mean)), sigma_Nfd_thy);
+  logit(Nfd_per) ~ normal(logit(to_array_1d(Nfd_per_mean)), sigma_Nfd_per);
   asinsqrt_array(ki_donor_thy) ~ normal(asinsqrt_array(to_array_1d(ki_donor_thy_mean)), sigma_donor_ki_thy);
   asinsqrt_array(ki_donor_per) ~ normal(asinsqrt_array(to_array_1d(ki_donor_per_mean)), sigma_donor_ki_per);
   asinsqrt_array(ki_host_thy) ~ normal(asinsqrt_array(to_array_1d(ki_host_thy_mean)), sigma_host_ki_thy);
@@ -526,8 +526,8 @@ generated quantities{
     log_lik_counts_per[i] = normal_lpdf(log(counts_per[i]) | log(counts_per_mean[i]), sigma_counts_per);
   }
   for (i in 1:numObs2) {
-    log_lik_Nfd_thy[i] = normal_lpdf(asinsqrt_real(Nfd_thy[i]) | asinsqrt_real(Nfd_thy_mean[i]), sigma_Nfd_thy);
-    log_lik_Nfd_per[i] = normal_lpdf(asinsqrt_real(Nfd_per[i]) | asinsqrt_real(Nfd_per_mean[i]), sigma_Nfd_per);
+    log_lik_Nfd_thy[i] = normal_lpdf(logit(Nfd_thy[i]) | logit(Nfd_thy_mean[i]), sigma_Nfd_thy);
+    log_lik_Nfd_per[i] = normal_lpdf(logit(Nfd_per[i]) | logit(Nfd_per_mean[i]), sigma_Nfd_per);
   }
   for (i in 1:numObs3) {
     log_lik_ki_donor_thy[i] = normal_lpdf(asinsqrt_real(ki_donor_thy[i]) | asinsqrt_real(ki_donor_thy_mean[i]), sigma_donor_ki_thy);

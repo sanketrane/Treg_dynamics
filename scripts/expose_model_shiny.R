@@ -43,15 +43,16 @@ donorki_data <- read.csv(donorki_file) %>%
 
 ki_data <- rbind(donorki_data, hostki_data)
 
-init_cond_full <- c("y1"=0.5 * exp(9.7), "y2"= 0.5 *  exp(9.7),
-                    "y3"= 0.5 *  exp(14.5), "y4"= 0.5 *  exp(14.5), 
-                    "y5"= 0.5 *  exp(9.25), "y6"= 0.5 *  exp(9.25),
-                    "y7"= 0.5 *  exp(11.45), "y8" = 0.5 *  exp(11.45),
+init_cond_full <- c("y1"=6.59029693, "y2"= 7.83911652,
+                    "y3"= 6.33645005, "y4"= 8.68433688, 
+                    "y5"= 6.89305477, "y6"= 6.99702152,
+                    "y7"= 6.38125476, "y8" = 6.6390128,
                     "y9"=0, "y10"=0, "y11"=0, "y12"=0)
 
 init_cond_simple <- c("y1"=exp(9.7), "y2"= exp(14.5), "y3"=exp(9.25), "y4"=exp(11.45), "y5"=0, "y6"=0)
 
-params_full <- c(psi=0.011, rho_D=0.0004, alpha=0.638427240, delta_D=0.020695076 + 0.0004, rho_I=0.04, beta=0.011862542)
+params_full <- c(psi=0.00702977401, rho_D=0.0285546524452, alpha=0.562172401,
+                 delta_D=0.0464934056, rho_I=0.14219259882, beta=0.01012512249)
 params_simple <- c(psi=0.011, alpha=0.83, delta_D=0.027, delta_I=0, beta=0.012)
 
 #data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)

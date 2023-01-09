@@ -62,13 +62,13 @@ numObs2 <- length(data_time_chi)
 numObs3 <- length(data_time_donorki)
 numObs4 <- length(data_time_hostki)
 n_solve <- length(solve_time)
-n_shards <- n_solve/3
+n_shards <- n_solve
 dpBMT <- unique_times_counts$age.at.S1K - unique_times_counts$age.at.BMT
 ageAtBMT <- unique_times_counts$age.at.BMT 
 counts_per <- counts_data$Periphery
 counts_thy <- counts_data$Thymus
-Nfd_per <- Nfd_data$Periphery
-Nfd_thy <- Nfd_data$Thymus
+Nfd_per <- Nfd_data$Periphery + 1e-4
+Nfd_thy <- Nfd_data$Thymus + 1e-4
 ki_donor_per <- donorki_data$Periphery
 ki_donor_thy <- donorki_data$Thymus
 ki_host_per <- hostki_data$Periphery
@@ -76,7 +76,7 @@ ki_host_thy <- hostki_data$Thymus
 
 logit_transf <- function(x){log(x/(1-x))}
 asinsq_transf <- function(x){asin(sqrt(x))}
-logit_transf(Nfd_thy)
+logit_transf(Nfd_per)
 plot(log(counts_thy)~data_time_counts, ylim = c(1, 16))
 points(log(counts_per)~data_time_counts, col=2)
 
@@ -112,7 +112,7 @@ rstan::stan_rdump(c("numObs1", "numObs2", "numObs3", "numObs4", "n_solve", "n_sh
              "counts_thy",  "Nfd_thy", "ki_donor_thy", "ki_host_thy",
              "ts_pred1", "ts_pred2", "ts_pred3", "ts_pred4",
              "tb_pred1", "tb_pred2", "tb_pred3",  "tb_pred4",  "numPred"),
-           file = file.path('data', paste0('Treg_data_S11',".Rdump")))
+           file = file.path('data', paste0('Treg_data_S', n_shards,".Rdump")))
 
 
 
