@@ -264,8 +264,8 @@ data{
    int time_index_chi[numObs2];
    int time_index_donorki[numObs3];
    int time_index_hostki[numObs4];
-   real counts_per[numObs1];
-   real counts_thy[numObs1];
+   //real counts_per[numObs1];
+   //real counts_thy[numObs1];
    real Nfd_thy[numObs2];
    real Nfd_per[numObs2];
    real ki_donor_per[numObs3];
@@ -316,8 +316,8 @@ parameters {
   real<lower= 0> y8_0;
 
 
-  real<lower=0> sigma_counts_per;
-  real<lower=0> sigma_counts_thy;
+  //real<lower=0> sigma_counts_per;
+  //real<lower=0> sigma_counts_thy;
   real<lower=0> sigma_Nfd_per;
   real<lower=0> sigma_Nfd_thy;
   real<lower=0> sigma_donor_ki_per;
@@ -410,8 +410,8 @@ model{
   y7_0 ~ normal(11, 2.5);
   y8_0 ~ normal(12, 2.5);
 
-  sigma_counts_per ~ normal(0.5, 0.5);
-  sigma_counts_thy ~ normal(0.7, 0.5);
+  //sigma_counts_per ~ normal(0.5, 0.5);
+  //sigma_counts_thy ~ normal(0.7, 0.5);
   sigma_Nfd_per ~ normal(0.4, 0.5);
   sigma_Nfd_thy ~ normal(0.4, 0.5);
   sigma_donor_ki_per ~ normal(0.3, 0.5);
@@ -419,8 +419,8 @@ model{
   sigma_host_ki_per ~ normal(0.2, 2);
   sigma_host_ki_thy ~ normal(0.3, 2);
 
-  log(counts_thy) ~ normal(log(counts_thy_mean), sigma_counts_thy);
-  log(counts_per) ~ normal(log(counts_per_mean), sigma_counts_per);
+  //log(counts_thy) ~ normal(log(counts_thy_mean), sigma_counts_thy);
+  //log(counts_per) ~ normal(log(counts_per_mean), sigma_counts_per);
   asinsqrt_array(Nfd_thy) ~ normal(asinsqrt_array(to_array_1d(Nfd_thy_mean)), sigma_Nfd_thy);
   asinsqrt_array(Nfd_per) ~ normal(asinsqrt_array(to_array_1d(Nfd_per_mean)), sigma_Nfd_per);
   asinsqrt_array(ki_donor_thy) ~ normal(asinsqrt_array(to_array_1d(ki_donor_thy_mean)), sigma_donor_ki_thy);
@@ -456,8 +456,8 @@ generated quantities{
   real ki_host_per_mean_pred4[numPred]; real ki_host_thy_mean_pred4[numPred];
 
   // log likelihoods
-  vector[numObs1] log_lik_counts_thy;
-  vector[numObs1] log_lik_counts_per;
+  //vector[numObs1] log_lik_counts_thy;
+  //vector[numObs1] log_lik_counts_per;
   vector[numObs2] log_lik_Nfd_thy;
   vector[numObs2] log_lik_Nfd_per;
   vector[numObs3] log_lik_ki_donor_thy;
@@ -521,10 +521,10 @@ generated quantities{
   }
 
   // calculating log likelihoods
-  for (i in 1:numObs1) {
-    log_lik_counts_thy[i] = normal_lpdf(log(counts_thy[i]) | log(counts_thy_mean[i]), sigma_counts_thy);
-    log_lik_counts_per[i] = normal_lpdf(log(counts_per[i]) | log(counts_per_mean[i]), sigma_counts_per);
-  }
+  //for (i in 1:numObs1) {
+  //  log_lik_counts_thy[i] = normal_lpdf(log(counts_thy[i]) | log(counts_thy_mean[i]), sigma_counts_thy);
+  //  log_lik_counts_per[i] = normal_lpdf(log(counts_per[i]) | log(counts_per_mean[i]), sigma_counts_per);
+  //}
   for (i in 1:numObs2) {
     log_lik_Nfd_thy[i] = normal_lpdf(asinsqrt_real(Nfd_thy[i]) | asinsqrt_real(Nfd_thy_mean[i]), sigma_Nfd_thy);
     log_lik_Nfd_per[i] = normal_lpdf(asinsqrt_real(Nfd_per[i]) | asinsqrt_real(Nfd_per_mean[i]), sigma_Nfd_per);

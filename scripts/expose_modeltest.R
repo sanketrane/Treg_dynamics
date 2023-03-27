@@ -14,11 +14,11 @@ ts_seq <- round(sample(seq(70, 100, length.out = 10), 3, replace = FALSE)) %>% s
 agebmtseq <- rep(49, length(ts_seq))
 #init_cond <- c(0.2 * 9e4, 0.8*9e4, 0.2 * 5e4, 0.8*5e4, 0.2 * 8e5, 0.8*8e5, 0.2 * 4e5, 0.8*4e5,
 #               0,0,0,0,0,0,0,0)
-init_cond <- c("y1"=exp(9.1), "y2"= exp(10.6), "y3"=exp(8.8), "y4"=exp(10.4), "y5"=exp(10.3), "y6"=exp(10.7),
-               "y7"=exp(10.4), "y8"=exp(11.4), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
+init_cond <- c("y1"=exp(9.70302424), "y2"= exp(12.60218721), "y3"=exp(9.64950000), "y4"=exp(12.45474339), "y5"=exp(10.43676166),
+               "y6"=exp(10.86395695), "y7"=exp(10.03221739), "y8"=exp(10.52207092), "y9"=0, "y10"=0, "y11"=0, "y12"=0)
 #init_cond <- c("y1"=exp(9.6), "y2"= exp(14.3), "y3"=exp(9.1), "y4"=exp(11.9), "y5"=0, "y6"=0)
 
-params <- c(psi=0.0027, rho_D=0.00039, alpha=0.14, delta_D=0.0054, rho_I=0.037, beta=0.0023)
+params <- c(psi=0.03021270, rho_D=0.01920767, alpha=0.07980150, delta_D=0.05992757, rho_I=0.02313391, beta=0.03173747)
 #params <- c(psi=0.011, alpha=0.83, delta_D=0.027, delta_I=0.001, beta=0.015)
 
 #data_pred <- math_reduce(global_parms, local_params = c(0), x_r=solve_time, x_i = unique_times_counts$age.at.BMT)
@@ -101,6 +101,44 @@ stan_pred_df4 <- data.frame("time_seq" = ts_pred4,
          ageBMT_bin = 'agebin4') %>%
   select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
 
+
+
+Stan_pred <- rbind(stan_pred_df1, stan_pred_df2, stan_pred_df3, stan_pred_df4)
+
+ggplot() +
+  geom_line(data = Stan_pred, aes(x = time_seq, y = counts_thy, color = ageBMT_bin), linetype=2, size=2) +
+  geom_line(data = Stan_pred, aes(x = time_seq, y = counts_per, color = ageBMT_bin), linetype=1, size=2) +
+  geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
+  labs(title=paste('Total counts of thymic naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
+  scale_y_log10() 
+
+ggplot() +
+  #geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Thymus, col=ageBMT_bin)) +
+  geom_point(data = R_pred, aes(x = time_seq, y = Nfd_thy, color = ageBMT_bin), size=0.7) +
+  labs(title=paste('Nfd thymic naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  scale_x_continuous(limits = c(60, 450), breaks=c(10, 30, 100, 300))
+
+ggplot() +
+  geom_point(data = Nfd_data, aes(x = age.at.S1K, y = Periphery, col=ageBMT_bin)) +
+  geom_point(data = Counts_pred, aes(x = time_seq, y = Nfd_per, color = ageBMT_bin)) +
+  labs(title=paste('Nfd peripheral naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  scale_x_continuous(limits = c(60, 450), breaks=c(10, 30, 100, 300))
+
+ggplot() +
+  geom_point(data = donorki_data, aes(x = age.at.S1K, y = Thymus), col=4) +
+  geom_line(data = Counts_pred, aes(x = time_seq, y = donor_ki_thy), col=4) +
+  geom_point(data = hostki_data, aes(x = age.at.S1K, y = Thymus), col=2) +
+  geom_line(data = Counts_pred, aes(x = time_seq, y = host_ki_thy), col=2) +
+  labs(title=paste('Nfd peripheral naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300)) +
+  facet_wrap(.~ageBMT_bin)
+
+
+
+
+
+
 #data_pred_df <- data.frame("time_seq" = solve_time,
 #                            "y_pred" = matrix(unlist(data_pred), nrow = length(solve_time), byrow = TRUE)) %>%
 #  rename(counts_thy = y_pred.1,
@@ -118,7 +156,7 @@ stan_pred_df4 <- data.frame("time_seq" = ts_pred4,
 Theta_spline <- function(Time, psi){psi * (10^6.407133491 * exp(-0.002387866 * (Time - 49)))}
 chi_spline <- function(Time){ifelse(Time-10 >0, 
                                     0.81548689 * (1 - exp(-0.06286984 * (Time - 10))), 0)}
-Donor_eps_spline <- function(Time){exp(- 0.06799028 * (Time - 49)) + 0.37848471}
+Donor_eps_spline <- function(Time){0}#exp(- 0.06799028 * (Time - 49)) + 0.37848471}
 
 
 theta_stanvec <- sapply(ts_pred1, theta_spline, psi=0.011)
@@ -252,8 +290,6 @@ R_ode_pred4 <- data.frame(ode(y=init_cond4,  times=c(118, ts_pred4), func=shm_ch
   select(time_seq, ageBMT_bin, contains('thy'), contains('per'))
 
 
-
-Stan_pred <- rbind(stan_pred_df1, stan_pred_df2, stan_pred_df3, stan_pred_df4)
 R_pred <- rbind(R_ode_pred1, R_ode_pred2, R_ode_pred3, R_ode_pred4)
 
 

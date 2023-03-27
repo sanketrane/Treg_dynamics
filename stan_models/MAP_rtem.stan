@@ -48,7 +48,7 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   real delta_0 = parms[4];
   real mu = parms[5];
   real rho = parms[6];
-  real beta = parms[7];
+  real Beta = parms[7];
   real delta= parms[8];
 
   real dydt[16];
@@ -61,7 +61,8 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   // model that assumes that tranistionals divide and die at different rates than mature naive T cells
   // Host naive Tregs
   // Thymic ki  hi tranistionals
-  dydt[1] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * eps_host + rho_0 * (2 * y[2] + y[1]) - (kloss + alpha + delta_0) * y[1];
+  //dydt[1] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * eps_host + rho_0 * (2 * y[2] + y[1]) - (kloss + alpha + delta_0) * y[1];
+  dydt[1] = rho_0 * (2 * y[2] + y[1]) - (kloss + alpha + delta_0) * y[1];
   // Thymic ki lo tranistionals
   dydt[2] = theta_spline(time, psi) * (1- Chi_spline(time - ageAtBMT)) * (1 - eps_host) + kloss * y[1] - (rho_0 + alpha + delta_0) * y[2];
   // Peripheral ki hi tranistionals
@@ -69,17 +70,18 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   // Peripheral ki lo tranistionals
   dydt[4] = alpha * y[2] + kloss * y[3] - (rho_0 + mu + delta_0) * y[4];
   // Peripheral ki hi mature
-  dydt[5] = mu * y[3] + alpha * y[7] + rho * (2 * y[6] + y[5]) - (kloss + beta + delta) * y[5];
+  dydt[5] = mu * y[3] + alpha * y[7] + rho * (2 * y[6] + y[5]) - (kloss + Beta + delta) * y[5];
   // Peripheral ki lo mature
-  dydt[6] = mu * y[4] + alpha * y[8] + kloss * y[5] - (rho + beta + delta) * y[6];
+  dydt[6] = mu * y[4] + alpha * y[8] + kloss * y[5] - (rho + Beta + delta) * y[6];
   // Thymic ki hi mature
-  dydt[7] = beta * y[5] + rho * (2 * y[8] + y[7]) - (kloss + alpha + delta) * y[7];
+  dydt[7] = Beta * y[5] + rho * (2 * y[8] + y[7]) - (kloss + alpha + delta) * y[7];
   // Thymic ki lo mature
-  dydt[8] = beta * y[6] + kloss * y[7] - (rho + alpha + delta) * y[8];
+  dydt[8] = Beta * y[6] + kloss * y[7] - (rho + alpha + delta) * y[8];
 
   // Donor naive Tregs
   // Thymic ki  hi tranistionals
-  dydt[9] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_0 * (2 * y[10] + y[9]) - (kloss + alpha + delta_0) * y[9];
+  //dydt[9] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_0 * (2 * y[10] + y[9]) - (kloss + alpha + delta_0) * y[9];
+  dydt[9] = rho_0 * (2 * y[10] + y[9]) - (kloss + alpha + delta_0) * y[9];
   // Thymic ki lo tranistionals
   dydt[10] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time)) + kloss * y[9] - (rho_0 + alpha + delta_0) * y[10];
   // Peripheral ki hi tranistionals
@@ -87,13 +89,13 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   // Peripheral ki lo tranistionals
   dydt[12] = alpha * y[10] + kloss * y[11] - (rho_0 + mu + delta_0) * y[12];
   // Peripheral ki hi mature
-  dydt[13] = mu * y[11] + alpha * y[15] + rho * (2 * y[14] + y[13]) - (kloss + beta + delta) * y[13];
+  dydt[13] = mu * y[11] + alpha * y[15] + rho * (2 * y[14] + y[13]) - (kloss + Beta + delta) * y[13];
   // Peripheral ki lo mature
-  dydt[14] = mu * y[12] + alpha * y[16] + kloss * y[13] - (rho + beta + delta) * y[14];
+  dydt[14] = mu * y[12] + alpha * y[16] + kloss * y[13] - (rho + Beta + delta) * y[14];
   // Thymic ki hi mature
-  dydt[15] = beta * y[13] + rho * (2 * y[16] + y[15]) - (kloss + alpha + delta) * y[15];
+  dydt[15] = Beta * y[13] + rho * (2 * y[16] + y[15]) - (kloss + alpha + delta) * y[15];
   // Thymic ki lo mature
-  dydt[16] = beta * y[14] + kloss * y[15] - (rho + alpha + delta) * y[16];
+  dydt[16] = Beta * y[14] + kloss * y[15] - (rho + alpha + delta) * y[16];
 
   return dydt;
 }
@@ -316,7 +318,7 @@ parameters {
   real<lower= 0, upper= 1> delta_0;
   real<lower= 0, upper= 1> mu;
   real<lower= 0, upper= 1> rho;
-  real<lower= 0, upper= 1> beta;
+  real<lower= 0, upper= 1> Beta;
   real<lower= 0, upper= 1> delta;
   real<lower= 0> y1_0;
   real<lower= 0> y2_0;
@@ -365,7 +367,7 @@ transformed parameters{
   global_params[4] = delta_0;
   global_params[5] = mu;
   global_params[6] = rho;
-  global_params[7] = beta;
+  global_params[7] = Beta;
   global_params[8] = delta;
   global_params[9] =  exp(y1_0);
   global_params[10] = exp(y2_0);
@@ -415,7 +417,7 @@ model{
   delta_0 ~ normal(0.01, 0.25);
   mu ~ normal(0.1, 0.025);
   rho ~ normal(0.01, 0.25);
-  beta ~ normal(0.01, 0.25);
+  Beta ~ normal(0.01, 0.25);
   delta ~ normal(0.01, 0.25);
   y1_0 ~ normal(9, 2.5);
   y2_0 ~ normal(11, 2.5);

@@ -18,7 +18,7 @@ Counts_thy_pred <- as.data.frame(fit, pars = c("counts_thy_mean_pred1", "counts_
   summarize(lb = quantile(value, probs = 0.05),
             median = quantile(value, probs = 0.5),
             ub = quantile(value, probs = 0.95)) %>%
-  bind_cols("timeseries" = c(ts_pred1 - tb_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
   mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
@@ -36,8 +36,8 @@ Nfd_thy_pred <- as.data.frame(fit, pars = c("Nfd_thy_mean_pred1", "Nfd_thy_mean_
   summarize(lb = quantile(value, probs = 0.05),
             median = quantile(value, probs = 0.5),
             ub = quantile(value, probs = 0.95))  %>%
-  bind_cols("timeseries" = c(ts_pred1 - tb_pred1, ts_pred2 - tb_pred2, 
-                             ts_pred3 - tb_pred3, ts_pred4 - tb_pred4))%>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, 
+                             ts_pred3, ts_pred4))%>%
   mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
@@ -70,8 +70,8 @@ Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_
   summarize(lb = quantile(value, probs = 0.05),
             median = quantile(value, probs = 0.5),
             ub = quantile(value, probs = 0.95)) %>%
-  bind_cols("timeseries" = c(ts_pred1 - tb_pred1, ts_pred2 - tb_pred2, 
-                             ts_pred3 - tb_pred3, ts_pred4 - tb_pred4))%>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, 
+                             ts_pred3, ts_pred4))%>%
   mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
