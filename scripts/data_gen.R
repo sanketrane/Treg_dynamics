@@ -9,7 +9,7 @@ counts_data <- read.csv(counts_file) %>%
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) 
 
 Nfd_file <- file.path("data", "Nfd_naiTreg.csv")
 Nfd_data <- read.csv(Nfd_file) %>% 

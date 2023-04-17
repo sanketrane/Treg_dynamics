@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent_sinKi67"
+modelName <- "Incumbent"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -29,7 +29,7 @@ stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
 stanfit2 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c2",".csv")))
 stanfit3 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c3",".csv")))
 
-fit <- sflist2stanfit(list(stanfit1, stanfit3))
+fit <- sflist2stanfit(list(stanfit2, stanfit3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
@@ -141,12 +141,14 @@ pdf(file = file.path(outputDir, paste(modelName,"MainPlots%03d.pdf", sep = "")),
 
 ggplot() +
   geom_ribbon(data = Counts_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
+  geom_ribbon(data = Counts_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
+  geom_ribbon(data = Counts_withsigma, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
   geom_line(data = Counts_pred, aes(x = timeseries, y = median, color = ageBMT_bin)) +
   geom_point(data = counts_data, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
   labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
-  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300))+
-  scale_y_continuous(limits = c(5e3, 5e6), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
+  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300)) + #scale_y_log10() +
+  scale_y_continuous(limits = c(5e3, 2e8), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
   facet_wrap(~ factor(location, levels = c('Thymus', "Periphery")))+
   guides(fill = 'none') + myTheme 
 
