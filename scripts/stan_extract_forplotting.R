@@ -24,6 +24,19 @@ Counts_thy_pred <- as.data.frame(fit, pars = c("counts_thy_mean_pred1", "counts_
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
          location = "Thymus") 
 
+# naive Treg counts in the thymus with 90% envelopes
+Counts_thy_withsigma <- as.data.frame(fit, pars = c("counts_thy_pred1", "counts_thy_pred2",
+                                               "counts_thy_pred3", "counts_thy_pred4")) %>%
+  gather(factor_key = TRUE) %>%
+  group_by(key) %>%
+  summarize(lb = quantile(value, probs = 0.05),
+            median = quantile(value, probs = 0.5),
+            ub = quantile(value, probs = 0.95)) %>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4)) %>%
+  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
+                             ifelse(grepl("pred2", key), "agebin2",
+                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
+         location = "Thymus")   
 
 #Counts_pred <- rbind(Counts_thy_pred)
 
@@ -56,11 +69,27 @@ Counts_per_pred <- as.data.frame(fit, pars = c("counts_per_mean_pred1", "counts_
   summarize(lb = quantile(value, probs = 0.05),
             median = quantile(value, probs = 0.5),
             ub = quantile(value, probs = 0.95))  %>%
-  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4))%>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4)) %>%
   mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
                              ifelse(grepl("pred2", key), "agebin2",
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
-         location = "Periphery")  
+         location = "Periphery")
+
+
+# naive Treg counts in the thymus with 90% envelopes
+Counts_per_withsigma <- as.data.frame(fit, pars = c("counts_per_pred1", "counts_per_pred2",
+                                                    "counts_per_pred3", "counts_per_pred4")) %>%
+  gather(factor_key = TRUE) %>%
+  group_by(key) %>%
+  summarize(lb = quantile(value, probs = 0.05),
+            median = quantile(value, probs = 0.5),
+            ub = quantile(value, probs = 0.95)) %>%
+  bind_cols("timeseries" = c(ts_pred1, ts_pred2, ts_pred3, ts_pred4)) %>%
+  mutate(ageBMT_bin = ifelse(grepl("pred1", key),"agebin1",
+                             ifelse(grepl("pred2", key), "agebin2",
+                                    ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
+         location = "Periphery") 
+
 
 # Nfd in peripheral naive Tregs with 90% envelopes
 Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_pred2",
@@ -81,6 +110,7 @@ Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_
 
 
 Counts_pred <- rbind(Counts_thy_pred, Counts_per_pred)
+Counts_withsigma <- rbind(Counts_thy_withsigma, Counts_per_withsigma)
 Nfd_pred <- rbind(Nfd_thy_pred, Nfd_per_pred)
 
 
@@ -178,3 +208,4 @@ ki_host_per_pred <- as.data.frame(fit, pars = c("ki_host_per_mean_pred1", "ki_ho
          subcomp = 'Host')    
 
 ki_per_pred <- rbind(ki_donor_per_pred, ki_host_per_pred)
+
