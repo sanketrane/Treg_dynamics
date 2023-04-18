@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent_sinKi67"
+modelName <- "Incumbent"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -36,7 +36,7 @@ fit <- sflist2stanfit(list(stanfit1, stanfit3))
 num_pars <- which(fit@model_pars %in% "global_params") -1      # the variable "sigma4" will change depdending on the data used
 parametersToPlot <- fit@model_pars[1:num_pars]
 
-# number of post-burnin samples that are used for plotting 
+# number of post-burn-in samples that are used for plotting 
 nPost <- nrow(fit)
 
 ################################################################################################
@@ -172,7 +172,7 @@ ggplot() +
   geom_ribbon(data = ki_thy_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
   geom_line(data = ki_thy_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
   geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=1.5) +
-  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
+  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in thymic naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
   facet_wrap(~ ageBMT_bin, scales = 'free', labeller = as_labeller(fac_labels))+
@@ -184,7 +184,7 @@ ggplot() +
   geom_ribbon(data = ki_per_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
   geom_line(data = ki_per_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
   geom_point(data = ki_data, aes(x = age.at.S1K, y = prop_ki*100, color = subcomp), size=1.5) +
-  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in donor naive Tregs") +
+  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in peripheral naive Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
   facet_wrap(~ ageBMT_bin, scales = 'free')+
