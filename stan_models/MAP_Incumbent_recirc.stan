@@ -77,11 +77,7 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   // Thymic ki lo Incumbent
   dydt[8] = Beta * y[10] + kloss * y[7] - (rho_I + alpha2 + rho_I) * y[8];              // rho_I = delta_I
   // Peripheral ki hi Incumbent
-<<<<<<< HEAD
-  dydt[9] = alpha2 * y[7] + rho_I * (2 * y[10] + y[9]) - (kloss + Beta + rho_I) * y[9];
-=======
   dydt[9] = alpha2 * y[7] + rho_I *  (2 * y[10] + y[9]) - (kloss + Beta + rho_I) * y[9];
->>>>>>> 3274f5bde71b9bcb384a93136fb08fee4c1997b2
   // Peripheral ki lo Incumbent
   dydt[10] = alpha2 * y[8] + kloss * y[9] - (rho_I + Beta + rho_I) * y[10];
 
