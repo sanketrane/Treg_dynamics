@@ -22,6 +22,9 @@ init_cond <- c("y1"=exp(8), "y2"= exp(9),
 params <- c(psi=0.00702977401, rho_D=0.0285546524452, alpha1=0.2,
             delta_D=0.0464934056, rho_I=0.14219259882, beta=0.01012512249, alpha2=0.4)
 
+#params <- c(psi=0.01, rho_D=0.005, alpha1=0.2,
+#            delta_D=0.03, rho_I=0.01, beta=0.02, alpha2=0.3)
+
 # time sequence for predictions specific to age bins within the data
 ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
 ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
@@ -53,7 +56,7 @@ stan_pred_df1 <- data.frame("time_seq" = ts_pred1,
          Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec1),
          Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec1),
          donor_ki_thy = (y_pred.11 + y_pred.12)/(y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16),
-         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.13),
+         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.14),
          host_ki_thy = (y_pred.1 + y_pred.5 + y_pred.7)/(y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8),
          host_ki_per = (y_pred.3 + y_pred.9)/(y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10),
          ageBMT_bin = 'agebin1') %>%
@@ -65,10 +68,10 @@ stan_pred_df2 <- data.frame("time_seq" = ts_pred2,
   mutate(counts_thy = y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8 + y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16,
          counts_per = y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10 + y_pred.13 + y_pred.14,
          total_counts = counts_thy + counts_per,
-         Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec1),
-         Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec1),
+         Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec2),
+         Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec2),
          donor_ki_thy = (y_pred.11 + y_pred.12)/(y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16),
-         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.13),
+         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.14),
          host_ki_thy = (y_pred.1 + y_pred.5 + y_pred.7)/(y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8),
          host_ki_per = (y_pred.3 + y_pred.9)/(y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10),
          ageBMT_bin = 'agebin2') %>%
@@ -79,10 +82,10 @@ stan_pred_df3 <- data.frame("time_seq" = ts_pred3,
   mutate(counts_thy = y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8 + y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16,
          counts_per = y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10 + y_pred.13 + y_pred.14,
          total_counts = counts_thy + counts_per,
-         Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec1),
-         Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec1),
+         Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec3),
+         Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec3),
          donor_ki_thy = (y_pred.11 + y_pred.12)/(y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16),
-         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.13),
+         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.14),
          host_ki_thy = (y_pred.1 + y_pred.5 + y_pred.7)/(y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8),
          host_ki_per = (y_pred.3 + y_pred.9)/(y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10),
          ageBMT_bin = 'agebin3') %>%
@@ -94,10 +97,10 @@ stan_pred_df4 <- data.frame("time_seq" = ts_pred4,
   mutate(counts_thy = y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8 + y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16,
          counts_per = y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10 + y_pred.13 + y_pred.14,
          total_counts = counts_thy + counts_per,
-         Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec1),
-         Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec1),
+         Nfd_thy = (y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16)/(counts_thy * chivec4),
+         Nfd_per = (y_pred.13 + y_pred.14)/(counts_per * chivec4),
          donor_ki_thy = (y_pred.11 + y_pred.12)/(y_pred.11 + y_pred.12 + y_pred.15 + y_pred.16),
-         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.13),
+         donor_ki_per = (y_pred.13)/(y_pred.13 + y_pred.14),
          host_ki_thy = (y_pred.1 + y_pred.5 + y_pred.7)/(y_pred.1 + y_pred.2 + y_pred.5 + y_pred.6 + y_pred.7 + y_pred.8),
          host_ki_per = (y_pred.3 + y_pred.9)/(y_pred.3 + y_pred.4 + y_pred.9 + y_pred.10),
          ageBMT_bin = 'agebin4') %>%
@@ -119,8 +122,21 @@ Nfd_pred <- Stan_pred %>%
          Periphery = Nfd_per) %>%
   gather(-c(time_seq, ageBMT_bin), key='location', value='Nfd')
 
-  
-  
+Ki_hostpred <- Stan_pred %>%
+  select(time_seq, ageBMT_bin, contains("host_ki")) %>%
+  mutate(subcomp = "Host") %>%
+  gather(-c(time_seq, ageBMT_bin, subcomp), key='location', value='prop_ki')
+
+Ki_donorpred <- Stan_pred %>%
+  select(time_seq, ageBMT_bin, contains("donor_ki")) %>%
+  mutate(subcomp = "Donor") %>%
+  gather(-c(time_seq, ageBMT_bin, subcomp), key='location', value='prop_ki')
+
+
+ki_pred <- rbind(Ki_hostpred, Ki_donorpred) %>%
+  mutate(Comp = ifelse(grepl("thy", location), "Thymus", "Periphery"))
+
+
   
 # ################################################################################################
 ## loading required datasets for plotting
@@ -158,7 +174,8 @@ donorki_data <- read.csv(donorki_file) %>%
          subcomp='Donor')%>%
   gather(c(Thymus, Periphery), key='location', value = 'prop_ki')
 
-ki_data <- rbind(donorki_data, hostki_data)
+ki_data <- rbind(donorki_data, hostki_data) %>%
+  rename(Comp = location)
 
 # ################################################################################################
 ggplot() +
@@ -182,23 +199,11 @@ ggplot() +
 
 
 ggplot() +
-  geom_point(data=donorki_data, aes(x = age.at.S1K, y = Ki67_naiveTregs_thy), col=2) +
-  geom_line(data = Stan_pred, aes(x = time_seq, y = donor_ki_thy), col=2) +
-  geom_point(data=hostki_data, aes(x = age.at.S1K, y = Ki67_naiveTregs_thy), col=4) +
-  geom_line(data = Stan_pred, aes(x = time_seq, y = host_ki_thy), col=4) +
-  labs(title=paste('Nfd thymic naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  geom_point(data=ki_data, aes(x = age.at.S1K, y = prop_ki, col=subcomp)) +
+  geom_line(data = ki_pred, aes(x = time_seq, y = prop_ki, col=subcomp)) +
+  labs(title=paste('Proportion of Ki67 hi in Tregs'),  y=NULL, x= "Host age (days)") + 
   scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300)) +
-  facet_wrap(.~ ageBMT_bin) + ylim(0, 0.5)
-
-
-ggplot() +
-  geom_point(data=donorki_data, aes(x = age.at.S1K, y = prop_ki), col=2) +
-  geom_line(data = Stan_pred, aes(x = time_seq, y = donor_ki_per), col=2) +
-  labs(title=paste('Nfd peripheral naive Tregs'),  y=NULL, x= "Host age (days)") + 
-  scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300)) +
-  facet_wrap(.~ ageBMT_bin) + ylim(0, 0.5)
-
-
+  facet_grid(Comp ~ ageBMT_bin) 
 
 
 
