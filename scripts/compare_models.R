@@ -42,7 +42,7 @@ saveDir <- file.path(projectDir, 'save_csv')
 
 
 ## model specific details that needs to be change for every run
-M1 <- "Incumbent_full"
+M1 <- "Incumbent_logit"
 M2 <- "Incumbent"
 M3 <- "Incumbent_simple"
 
@@ -51,7 +51,7 @@ stanfitM1.1 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c1", ".csv")))
 stanfitM1.2 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c2",".csv")))
 stanfitM1.3 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c3",".csv")))
 
-fit1 <- sflist2stanfit(list(stanfitM1.1, stanfitM1.3))
+fit1 <- sflist2stanfit(list(stanfitM1.3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
@@ -64,7 +64,7 @@ stanfitM2.1 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c1", ".csv")))
 stanfitM2.2 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c2",".csv")))
 stanfitM2.3 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c3",".csv")))
 
-fit2 <- sflist2stanfit(list(stanfitM2.3))
+fit2 <- sflist2stanfit(list(stanfitM2.1, stanfitM2.2, stanfitM2.3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
@@ -101,7 +101,8 @@ names(out_table3) <- c('Estimates', 'par_lb', 'par_ub')
 
 df_pars <- rbind(out_table1, out_table2) %>%
   mutate(parname = c(row.names(out_table1), row.names(out_table2)),
-         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2)))
+         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2))) %>%
+  filter(!grepl("_0", parname))
 
 blank_data <- data.frame(parname = rep(c("alpha", "delta", "sigma"), 3),
                          Param = rep(c("Rate of influx", "Loss rate", "Sigma"), 3),
