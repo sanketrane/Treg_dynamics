@@ -42,9 +42,9 @@ saveDir <- file.path(projectDir, 'save_csv')
 
 
 ## model specific details that needs to be change for every run
-M1 <- "Incumbent_logit"
-M2 <- "Incumbent"
-M3 <- "Incumbent_simple"
+M1 <- "Incumbent"
+M2 <- "Incumbent_tightSigma"
+M3 <- "Incumbent_recirc"
 
 # compiling multiple stan objects together that ran on different nodes
 stanfitM1.1 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c1", ".csv")))
@@ -99,9 +99,9 @@ out_table3 <- data.frame(ptable3[1:num_pars_M3, c(1, 4, 8)])
 names(out_table3) <- c('Estimates', 'par_lb', 'par_ub')
 
 
-df_pars <- rbind(out_table1, out_table2) %>%
-  mutate(parname = c(row.names(out_table1), row.names(out_table2)),
-         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2))) %>%
+df_pars <- rbind(out_table1, out_table2, out_table3) %>%
+  mutate(parname = c(row.names(out_table1), row.names(out_table2), row.names(out_table3)),
+         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2), rep('M3', num_pars_M3))) %>%
   filter(!grepl("_0", parname))
 
 blank_data <- data.frame(parname = rep(c("alpha", "delta", "sigma"), 3),

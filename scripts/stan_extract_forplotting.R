@@ -38,6 +38,16 @@ Counts_thy_withsigma <- as.data.frame(fit, pars = c("counts_thy_pred1", "counts_
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
          location = "Thymus")   
 
+### selecting rows closest to observed timpoints
+find_nearest_time <- function(test, target_vec){
+  target.index <- which(abs(target_vec - test) == min(abs(target_vec - test)))
+  #target_vec[target.index]
+}
+
+obstimes_index <- sapply(counts_data$age.at.S1K, find_nearest_time, target_vec = ts_pred1)
+
+Counts_thy_sigma_obs <- Counts_thy_withsigma[obstimes_index, ]%>%
+  mutate(ageBMT_bin = counts_data$ageBMT_bin)
 #Counts_pred <- rbind(Counts_thy_pred)
 
 
@@ -90,7 +100,8 @@ Counts_per_withsigma <- as.data.frame(fit, pars = c("counts_per_pred1", "counts_
                                     ifelse(grepl("pred3", key), "agebin3", "agebin4"))),
          location = "Periphery") 
 
-
+Counts_per_sigma_obs <- Counts_per_withsigma[obstimes_index, ] %>%
+  mutate(ageBMT_bin = counts_data$ageBMT_bin)
 # Nfd in peripheral naive Tregs with 90% envelopes
 Nfd_per_pred <- as.data.frame(fit, pars = c("Nfd_per_mean_pred1", "Nfd_per_mean_pred2",
                                              "Nfd_per_mean_pred3", "Nfd_per_mean_pred4")) %>%

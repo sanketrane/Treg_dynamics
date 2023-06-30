@@ -65,15 +65,15 @@
     real dydt[4];
     real beta  = 1/3.5;            //rate of loss of ki67 -- mature naive cells
 
-    // model that assumes that RTEs divide and die at different rates than mature naive T cells
+    // model that assumes that RTEs divide and die at different rates than mature naive T cells and theri matiration is linked with division
     // ki hi RTE
-    dydt[1] = theta_spline(t, psi) * eps_spline(t) + rho_rte * (2 * y[2] + y[1]) - (beta + delta_rte + mu) * y[1];
+    dydt[1] = theta_spline(t, psi) * eps_spline(t) + rho_rte * (1 - mu) * (2 * y[2] + y[1]) - (beta + delta_rte + (rho_rte * mu)) * y[1];
     // ki lo RTE
-    dydt[2] = theta_spline(t, psi) * (1 - eps_spline(t)) + beta * y[1] - (rho_rte + delta_rte + mu) * y[2];
+    dydt[2] = theta_spline(t, psi) * (1 - eps_spline(t)) + beta * y[1] - (rho_rte + delta_rte) * y[2];
     // ki hi mN
-    dydt[3] = mu * y[1] + rho_nai * (2 * y[4] + y[3]) - (beta + delta_nai) * y[3];
+    dydt[3] = 2 * rho_rte * mu * (y[1] + y[2]) + rho_nai * (2 * y[4] + y[3]) - (beta + delta_nai) * y[3];
     // ki lo mN
-    dydt[4] = mu * y[2] + beta * y[3] - (rho_nai + delta_nai) * y[4];
+    dydt[4] = beta * y[3] - (rho_nai + delta_nai) * y[4];
 
     return dydt;
   }
@@ -109,25 +109,25 @@
     real ageAtBMT = parms[7];
 
     // ki hi donor RTE
-    dydt[1] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * eps_spline(time) + rho_rte * (2 * y[2] + y[1]) - (beta + delta_rte + mu) * y[1];
+    dydt[1] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * eps_spline(time) + rho_rte * (1 - mu) * (2 * y[2] + y[1]) - (beta + delta_rte + (rho_rte * mu)) * y[1];
     // ki lo donor RTE
-    dydt[2] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - eps_spline(time)) + beta * y[1] - (rho_rte + delta_rte + mu) * y[2];
+    dydt[2] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - eps_spline(time)) + beta * y[1] - (rho_rte + delta_rte) * y[2];
 
     // ki hi donor mN
-    dydt[3] = mu * y[1] + rho_nai * (2 * y[4] + y[3]) - (beta + delta_nai) * y[3];
+    dydt[3] = (2 * rho_rte * mu) * (y[1] + y[2]) + rho_nai * (2 * y[4] + y[3]) - (beta + delta_nai) * y[3];
     // ki lo donor mN
-    dydt[4] = mu * y[2] + beta * y[3] - (rho_nai + delta_nai) * y[4];
+    dydt[4] = beta * y[3] - (rho_nai + delta_nai) * y[4];
 
 
     // ki hi host RTE
-    dydt[5] = theta_spline(time, psi) * (1-Chi_spline(time - ageAtBMT)) * eps_spline(time) + rho_rte * (2 * y[6] + y[5]) - (beta + delta_rte + mu) * y[5];
+    dydt[5] = theta_spline(time, psi) * (1-Chi_spline(time - ageAtBMT)) * eps_spline(time) + rho_rte * (1 - mu) * (2 * y[6] + y[5]) - (beta + delta_rte +  (rho_rte * mu)) * y[5];
     // ki lo host RTE
-    dydt[6] = theta_spline(time, psi) * (1-Chi_spline(time - ageAtBMT)) * (1 - eps_spline(time)) +  beta * y[5] - (rho_rte + delta_rte + mu) * y[6];
+    dydt[6] = theta_spline(time, psi) * (1-Chi_spline(time - ageAtBMT)) * (1 - eps_spline(time)) +  beta * y[5] - (rho_rte + delta_rte) * y[6];
 
     // ki hi mN
-    dydt[7] = mu * y[5] + rho_nai * (2 * y[6] + y[7]) - (beta + delta_nai) * y[7];
+    dydt[7] = (2 * rho_rte * mu) * (y[5] + y[6]) + rho_nai * (2 * y[6] + y[7]) - (beta + delta_nai) * y[7];
     // ki lo mN
-    dydt[8] = mu * y[6] + beta * y[7] - (rho_nai + delta_nai) * y[8];
+    dydt[8] = beta * y[7] - (rho_nai + delta_nai) * y[8];
 
     return dydt;
   }
@@ -180,36 +180,36 @@
       }
 
   vector math_reduce(vector global_params, vector local_params, real[] x_r, int[] x_i){
-    // data for each shard
-    int n = size(x_i); // n = 1
-    real dat_time = x_r[1];
-    int dat_t0 = x_i[1];                          // time zero -- for chimeras age at BMT
-    real tb_time = dat_t0/1.0;
+      // data for each shard
+      int n = size(x_i); // n = 1
+      real dat_time = x_r[1];
+      int dat_t0 = x_i[1];                          // time zero -- for chimeras age at BMT
+      real tb_time = dat_t0/1.0;
 
-    //params
-    real N0 = global_params[7];
-    real kappa0 = global_params[8];
-    real init_cond[4];
+      //params
+      real N0 = global_params[7];
+      real kappa0 = global_params[8];
+      real init_cond[4];
 
-    // ODE solution -- predictions for the observed timecourse
-    real chi_solve[8];
+      // ODE solution -- predictions for the observed timecourse
+      real chi_solve[8];
 
-    real chi_counts_mean;
-    real host_counts_mean;
-    real donor_counts_mean;
-    real host_ki_mean;
-    real donor_ki_mean;
+      real chi_counts_mean;
+      real host_counts_mean;
+      real donor_counts_mean;
+      real host_ki_mean;
+      real donor_ki_mean;
 
-    vector[4*n] y_mean_stacked;
+      vector[4*n] y_mean_stacked;
 
-    // ODE solution -- predictions for the observed timecourse
-    init_cond[1] = kappa0 * N0;
-    init_cond[2] = (1 - kappa0) * N0;
-    init_cond[3] = 0.0;
-    init_cond[4] = 0.0;
+      // ODE solution -- predictions for the observed timecourse
+      init_cond[1] = kappa0 * N0;
+      init_cond[2] = (1 - kappa0) * N0;
+      init_cond[3] = 0.0;
+      init_cond[4] = 0.0;
 
-    // each shard has a single datpoint so its unique ****
-    // PDE solution for chimera dataset -- x_r = data time and x_i = time at BMT
+      // each shard has a single datpoint so its unique ****
+      // PDE solution for chimera dataset -- x_r = data time and x_i = time at BMT
       chi_solve = solve_chi(dat_time, tb_time, init_cond, to_array_1d(global_params));
       chi_counts_mean = chi_solve[1] + chi_solve[2] + chi_solve[3] + chi_solve[4] + chi_solve[5] + chi_solve[6] + chi_solve[7] + chi_solve[8];
       donor_counts_mean = chi_solve[1] + chi_solve[2] + chi_solve[3] + chi_solve[4];
@@ -228,74 +228,78 @@
     // functions for transformation of fractions in (0,a), where a >=1
     real logit_inverse(real x){
        real ans;
-         ans = exp(x)/(1+exp(x));
-         return ans;
-    }
 
-    // functions for transformation of fractions in (0,a), where a >=1
-    real[] asinsqrt_array(real[] x){
-      int ndims = size(x);
-      real answer[ndims];
-      real a = 1.2;
+       ans = exp(x)/(1+exp(x));
 
-      for (i in 1: ndims){
-        answer[i] = asin(sqrt(x[i])/sqrt(a));
-      }
-      return answer;
-    }
+       return ans;
+     }
 
-    real asinsqrt_real(real x){
-      real a = 1.2;
+     // functions for transformation of fractions in (0,a), where a >=1
+     real[] asinsqrt_array(real[] x){
+       int ndims = size(x);
+       real answer[ndims];
+       real a = 1.2;
 
-      real answer = asin(sqrt(x)/sqrt(a));
-      return answer;
-    }
+       for (i in 1: ndims){
+         answer[i] = asin(sqrt(x[i])/sqrt(a));
+       }
+       return answer;
+     }
 
-    real asinsqrt_inv(real x){
-      real a = 1.2;
+     real asinsqrt_real(real x){
+       real a = 1.2;
 
-      real answer = a * (sin(x))^2;
-      return answer;
-    }
+       real answer = asin(sqrt(x)/sqrt(a));
+       return answer;
+     }
+
+     real asinsqrt_inv(real x){
+       real a = 1.2;
+
+       real answer = a * (sin(x))^2;
+       return answer;
+     }
   }
 
 data{
-   int<lower = 1> numChi;
-   real<lower = 0> chi_counts[numChi];
-   real<lower = 0> N_donor_fraction[numChi];
-   real<lower = 0> donor_ki[numChi];
-   real<lower = 0> host_ki[numChi];
-   int<lower  = 1> numPred;
-   real<lower = 0> ts_pred_chi1[numPred];
-   real<lower = 0> ts_pred_chi2[numPred];
-   real<lower = 0> ts_pred_chi3[numPred];
-   real<lower = 0> tb_pred1[numPred];
-   real<lower = 0> tb_pred2[numPred];
-   real<lower = 0> tb_pred3[numPred];
-   int n_shards;
-   int<lower = 0> dat_t0[n_shards];       // nshards = numOnt + numChi
-   int<lower = 0> dat_time[n_shards];     // nshards = numOnt + numChi
+ int<lower = 1> numChi;
+ real<lower = 0> chi_counts[numChi];
+ real<lower = 0> N_donor_fraction[numChi];
+ real<lower = 0> donor_ki[numChi];
+ real<lower = 0> host_ki[numChi];
+ int<lower  = 1> numPred;
+ real<lower = 0> ts_pred_chi1[numPred];
+ real<lower = 0> ts_pred_chi2[numPred];
+ real<lower = 0> ts_pred_chi3[numPred];
+ real<lower = 0> tb_pred1[numPred];
+ real<lower = 0> tb_pred2[numPred];
+ real<lower = 0> tb_pred3[numPred];
+ int n_shards;
+ int<lower = 0> dat_t0[n_shards];       // nshards = numOnt + numChi
+ int<lower = 0> dat_time[n_shards];     // nshards = numOnt + numChi
 }
 
 transformed data{
-   int x_i[n_shards, 1];         // each shard gets a single data point
-   real x_r[n_shards, 1];        // each shard gets a single data point
-   // empty set of per shard params
-   vector[0] local_params[n_shards];  // shard specific params --  useful for hierarchical modelling
-   // data split into shards
-   for (s in 1:n_shards){
-    x_i[s, 1] = dat_t0[s];                       // age at BMT split
-    x_r[s, 1] = dat_time[s];                     // time split
-   }
+ int x_i[n_shards, 1];         // each shard gets a single data point
+ real x_r[n_shards, 1];        // each shard gets a single data point
+
+ // empty set of per shard params
+ vector[0] local_params[n_shards];  // shard specific params --  useful for hierarchical modelling
+
+ // data split into shards
+ for (s in 1:n_shards){
+  x_i[s, 1] = dat_t0[s];                       // age at BMT split
+  x_r[s, 1] = dat_time[s];                     // time split
+ }
 }
 
 parameters {
   real<lower= 0, upper= 1> psi;
   real<lower= 0, upper= 1> delta_nai;
-  real<lower= 0, upper= 1> delta_rte;
   real<lower= 0, upper= 1> rho_nai;
   real<lower= 0, upper= 1> rho_rte;
   real<lower= 0, upper= 1> mu;
+  real<lower= 0, upper= 1> delta_rte;
   real<lower=1E4, upper=5E6> N0;                  // total cells counts at t0
   real<lower= 0, upper= 1> kappa0;
 
@@ -336,12 +340,12 @@ transformed parameters{
 model{
   psi ~ normal(0.3, 0.2);
   rho_nai ~ normal(0.005, 0.25);
-  rho_rte ~ normal(0.1, 0.25);
-  delta_nai ~ normal(0.01, 0.25);
+  rho_rte ~ normal(0.01, 0.25);
+  delta_nai ~ normal(0.005, 0.25);
   delta_rte ~ normal(0.01, 0.25);
-  mu ~ normal(0.1, 0.025);
+  mu ~ normal(0.01, 0.25);
 
-  N0 ~ normal(9E5, 1E5);
+  N0 ~ normal(5E5, 1.5E5);
   kappa0 ~ normal(0.8, 0.1);
 
   sigma_chi_counts ~ normal(0, 2);

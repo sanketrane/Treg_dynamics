@@ -76,11 +76,9 @@ ki_host_thy <- hostki_data$Thymus
 
 logit_transf <- function(x){log(x/(1-x))}
 asinsq_transf <- function(x){asin(sqrt(x))}
-<<<<<<< HEAD
+
 logit_transf(Nfd_thy)
-=======
 logit_transf(Nfd_per)
->>>>>>> 4e8f318e85797612de579e3e2ea67b5219212a34
 plot(log(counts_thy)~data_time_counts, ylim = c(1, 16))
 points(log(counts_per)~data_time_counts, col=2)
 
