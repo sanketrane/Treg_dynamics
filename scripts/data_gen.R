@@ -4,28 +4,28 @@ rm(list = ls()); gc();
 library(tidyverse)
 
 ## importing data to be fitted 
-counts_file <- file.path("data", "Counts_naiTreg.csv")
+counts_file <- file.path("data", "Counts_Treg.csv")
 counts_data <- read.csv(counts_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) 
 
-Nfd_file <- file.path("data", "Nfd_naiTreg.csv")
+Nfd_file <- file.path("data", "Nfd_Treg.csv")
 Nfd_data <- read.csv(Nfd_file) %>% 
   arrange(age.at.S1K)%>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))
 
-hostki_file <- file.path("data", "hostKi67_naiTreg.csv")
+hostki_file <- file.path("data", "hostKi67_Treg.csv")
 hostki_data <- read.csv(hostki_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))))
 
-donorki_file <- file.path("data", "donorKi67_naiTreg.csv")
+donorki_file <- file.path("data", "donorKi67_Treg.csv")
 donorki_data <- read.csv(donorki_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
@@ -65,14 +65,14 @@ n_solve <- length(solve_time)
 n_shards <- n_solve
 dpBMT <- unique_times_counts$age.at.S1K - unique_times_counts$age.at.BMT
 ageAtBMT <- unique_times_counts$age.at.BMT 
-counts_per <- counts_data$Periphery
-counts_thy <- counts_data$Thymus
-Nfd_per <- Nfd_data$Periphery + 1e-4
-Nfd_thy <- Nfd_data$Thymus + 1e-4
-ki_donor_per <- donorki_data$Periphery
-ki_donor_thy <- donorki_data$Thymus
-ki_host_per <- hostki_data$Periphery
-ki_host_thy <- hostki_data$Thymus
+counts_naive <- counts_data$naive
+counts_memory <- counts_data$memory
+Nfd_naive <- Nfd_data$naive + 1e-4
+Nfd_memory <- Nfd_data$memory + 1e-4
+ki_donor_naive <- donorki_data$naive
+ki_donor_memory <- donorki_data$memory
+ki_host_naive <- hostki_data$naive
+ki_host_memory <- hostki_data$memory
 
 logit_transf <- function(x){log(x/(1-x))}
 asinsq_transf <- function(x){asin(sqrt(x))}
@@ -110,8 +110,8 @@ numPred <- length(ts_pred1)
 
 rstan::stan_rdump(c("numObs1", "numObs2", "numObs3", "numObs4", "n_solve", "n_shards", "solve_time", "dpBMT", "ageAtBMT", 
              "time_index_counts", "time_index_chi", "time_index_donorki", "time_index_hostki", 
-             "counts_per",  "Nfd_per", "ki_donor_per", "ki_host_per",
-             "counts_thy",  "Nfd_thy", "ki_donor_thy", "ki_host_thy",
+             "counts_naive",  "Nfd_naive", "ki_donor_naive", "ki_host_naive",
+             "counts_memory",  "Nfd_memory", "ki_donor_memory", "ki_host_memory",
              "ts_pred1", "ts_pred2", "ts_pred3", "ts_pred4",
              "tb_pred1", "tb_pred2", "tb_pred3",  "tb_pred4",  "numPred"),
            file = file.path('data', paste0('Treg_data_S', n_shards,".Rdump")))
@@ -123,6 +123,15 @@ rstan::stan_rdump(c("numObs1", "numObs2", "numObs3", "numObs4", "n_solve", "n_sh
 
 
 
+thynai_file <- file.path("data", "hostKi67_naiTreg.csv")
+thynai_data <- read.csv(thynai_file) 
+
+ggplot(thynai_data)+
+  geom_point(aes(x=age.at.S1K, y=Thymus))+
+  ylim(0,1)
+
+thynai_data %>% summarise(m_l = mean(Thymus))
+  
 
 
 

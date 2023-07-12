@@ -290,28 +290,28 @@ dev.off()
 
 #######Importing datafiles as .csv for model fitting precess #######
 Treg_join %>%
-  mutate(Periphery = round(total_naiveTregs_periph, 0),
-         Thymus = round(total_naiveTregs_thy, 0)) %>% 
+  mutate(naive = round(total_naiveTregs_periph, 0),
+         memory = round(total_memoryTregs_periph, 0)) %>% 
   select(-contains("total"), -contains('fd')) %>%
-  write.csv(file = "data/Counts_naiTreg.csv", row.names = FALSE)
+  write.csv(file = "data/Counts_Treg.csv", row.names = FALSE)
 
 Treg_fd_Norm %>%
-  mutate(Periphery = round(naiveTregs_Nfd_periph, 4),
-         Thymus = round(naiveTregs_Nfd_thy, 4)) %>%
+  mutate(naive = round(memoryTregs_Nfd_periph, 4),
+         memory = round(memoryTregs_Nfd_periph, 4)) %>%
   select(-contains("Nfd"), -contains('memory')) %>%
-  write.csv(file = "data/Nfd_naiTreg.csv", row.names = FALSE)
+  write.csv(file = "data/Nfd_Treg.csv", row.names = FALSE)
 
 Treg_hostKi67 %>%
-  mutate(Periphery = round(Ki67_naiveTregs_periph, 4),
-         Thymus = round(Ki67_naiveTregs_thy, 4)) %>%
+  mutate(naive = round(Ki67_naiveTregs_periph, 4),
+         memory = round(Ki67_memoryTregs_periph, 4)) %>%
   select(-contains("Ki67"))  %>%
-  write.csv(file = "data/hostKi67_naiTreg.csv", row.names = FALSE)
+  write.csv(file = "data/hostKi67_Treg.csv", row.names = FALSE)
 
 Treg_donorKi67 %>%
-  mutate(Periphery = round(Ki67_naiveTregs_periph, 4),
-         Thymus = round(Ki67_naiveTregs_thy, 4)) %>%
+  mutate(naive = round(Ki67_naiveTregs_periph, 4),
+         memory = round(Ki67_memoryTregs_periph, 4)) %>%
   select(-contains("Ki67"))  %>%
-  write.csv(file = "data/donorKi67_naiTreg.csv", row.names = FALSE)
+  write.csv(file = "data/donorKi67_Treg.csv", row.names = FALSE)
   
 source_join %>%
   mutate(FoxP3_Neg_SP4 = round(total_FoxP3_neg_SP4, 0))%>%

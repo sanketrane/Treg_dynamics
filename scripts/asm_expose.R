@@ -5,7 +5,7 @@ library(tidyverse)
 
 ## model
 rstan::expose_stan_functions("stan_models/MAP_asm_deltavar.stan")
-params <- c(1.363198e+05, 6.041325e-03, 1.708735e-02)
+params <- c(1.363198e+05, 6.041325e-03, 1.708735e-02, 0.01)
 theta <- c(0)
 x_i <- c(60)
 x_r <- c(100)
