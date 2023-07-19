@@ -69,19 +69,30 @@ functions{
     return theta_spline(time, parms) - theta_donor(time, parms);
   }
 
-  real ki_dist_theta(real ki, real time) {
+  //  Ki67 distribution of influx comeing from thymus
+  real ki_dist_theta(real ki, int subpop) {
     real k_bar = 1/exp(1.0);
-    // Flat, normalised ki-distribution for all incoming cells
-    real value = 1/k_bar;
-    return value;
+    real k0; real r_kdist;
+    if(subpop == 1){
+      k0 = 0.13;            // subpop = 1 is total thymic nai Treg pool
+    } else if (subpop == 2) {
+      k0 = 0.16;            // subpop = 1 is host thymic nai Treg pool
+    } else {
+      k0 = 0.09;            // subpop != 1 is donor thymic nai Treg pool
+    } 
+    
+    r_kdist = (log(1-k0)/log(k_bar)) - 1;   // parameter that shapes ki67 distribution at t0
+    // ki67 distribution  
+    return (r_kdist +1) * ki^r_kdist;
   }
 
   //  Ki67 distribution of cells exisiting in the periphery at t0
   real ki_dist_init(real ki){
-    real k_bar = 1/exp(1.0);
-    // Flat, normalised ki-distribution for all incoming cells
-    real value = 1/k_bar;
-    return value;
+    real k_bar = exp(-1);   // threshold for Ki67 postive gate
+    real k0 = 0.12;        // prop of ki67+ cells at t0             
+    real r_kdist = (log(1-k0)/log(k_bar)) - 1;   // parameter that shapes ki67 distribution at t0
+    // ki67 distribution  
+    return (r_kdist +1) * ki^r_kdist;
   }
 
   // rate of cell division depending on cell age
@@ -380,7 +391,7 @@ functions{
     real value;
 
     if (ki <= exp(-beta * age)) {
-      value = theta_spline(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time - age) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
+      value = theta_spline(time - age, parms) * ki_dist_theta(ki * exp(beta * age), 1) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
     } else {
       value = 2.0 * rho_age(age, parms) * Asm_theta_age(age - tau, time - tau, parms) * (1/(beta * ki)) * exp(- alpha_integ(age - tau, age, parms));
     }
@@ -423,7 +434,7 @@ functions{
     real value;
 
     if (ki <= exp(-beta * age)) {
-      value = theta_host(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time - age) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
+      value = theta_host(time - age, parms) * ki_dist_theta(ki * exp(beta * age), 2) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
     } else {
       value = 2.0 * rho_age(age, parms) * Asm_Host_theta_age(age - tau, time - tau, parms) * (1/(beta * ki)) * exp(- alpha_integ(age - tau, age, parms));
     }
@@ -438,7 +449,7 @@ functions{
     real value;
 
     if (ki <= exp(-beta * age)) {
-      value = theta_donor(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time - age) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
+      value = theta_donor(time - age, parms) * ki_dist_theta(ki * exp(beta * age), 3) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
     } else {
       value = 2.0 * rho_age(age, parms) * Asm_Donor_theta_age(age - tau, time - tau, parms) * (1/(beta * ki)) * exp(- alpha_integ(age - tau, age, parms));
     }

@@ -77,11 +77,6 @@ ki_host_memory <- hostki_data$memory
 logit_transf <- function(x){log(x/(1-x))}
 asinsq_transf <- function(x){asin(sqrt(x))}
 
-logit_transf(Nfd_thy)
-logit_transf(Nfd_per)
-plot(log(counts_thy)~data_time_counts, ylim = c(1, 16))
-points(log(counts_per)~data_time_counts, col=2)
-
 ## defining the function to calculate mode of a vector series
 getmode <- function(v) {
   uniqv <- unique(v)
@@ -114,24 +109,9 @@ rstan::stan_rdump(c("numObs1", "numObs2", "numObs3", "numObs4", "n_solve", "n_sh
              "counts_memory",  "Nfd_memory", "ki_donor_memory", "ki_host_memory",
              "ts_pred1", "ts_pred2", "ts_pred3", "ts_pred4",
              "tb_pred1", "tb_pred2", "tb_pred3",  "tb_pred4",  "numPred"),
-           file = file.path('data', paste0('Treg_data_S', n_shards,".Rdump")))
+           file = file.path('data', paste0('Treg_Newdata_S', n_shards,".Rdump")))
 
 
-
-
-
-
-
-
-thynai_file <- file.path("data", "hostKi67_naiTreg.csv")
-thynai_data <- read.csv(thynai_file) 
-
-ggplot(thynai_data)+
-  geom_point(aes(x=age.at.S1K, y=Thymus))+
-  ylim(0,1)
-
-thynai_data %>% summarise(m_l = mean(Thymus))
-  
 
 
 

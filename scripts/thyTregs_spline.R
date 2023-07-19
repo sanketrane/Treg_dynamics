@@ -78,22 +78,14 @@ ggplot() +
   labs(title = 'Total counts of thymic FoxP3 positive naive SP4 cells',  y=NULL,  x = 'Host age (days)') 
 
 
-thynaiveTregs_hostki$Periphery %>% mean()
-thynaiveTregs_donorki$Periphery %>% mean()
+thynaiveTregs_hostki$Thymus %>% mean()
+thynaiveTregs_donorki$Thymus %>% mean()
+ggplot() + 
+  geom_point(data=thynaiveTregs_donorki, aes(x=age.at.S1K, y=Thymus), col=4, size =2) +
+  geom_point(data=thynaiveTregs_hostki, aes(x=age.at.S1K, y=Thymus), col=2, size =2) +
+  xlim(40, 450)+ ylim(0,1)+
+  labs(title = 'Total counts of thymic FoxP3 positive naive SP4 cells',  y=NULL,  x = 'Host age (days)') 
 
-
-ki_init <- function(ki){
-  r_ki_init=exp(-1)
-  if(ki >= 0.0 && ki <= 1.0){
-    value = exp(-ki * r_ki_init)/((1 - exp(-r_ki_init))/r_ki_init);
-  }  else {
-    value = 0.0;
-  }
-}
-
-kseq <- seq(0, 1, 0.001)
-kivec <- sapply(kseq, ki_init)
-plot(kivec ~ kseq)
 
 # exporting plot as PDF
 pdf(file = file.path("out_fit", paste(colnames(cnts)[4], "IndPlots%03d.pdf", sep = "")),

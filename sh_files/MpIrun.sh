@@ -18,6 +18,6 @@ done
 
 
 echo "stan_models/MAP_${modelname} sample num_samples=500 num_warmup=300 random seed=5689 id=1 data file=data/Treg_data_S33.Rdump output file=save_csv/${modelname}_s33.csv";
-mpirun -vvvv stan_models/MAP_${modelname} sample num_samples=1000 num_warmup=300 random seed=5689 id=1 data file=data/Treg_data_S33.Rdump output file=save_csv/${modelname}_c1.csv &
-mpirun -vvvv stan_models/MAP_${modelname} sample num_samples=1000 num_warmup=300 random seed=5689 id=2 data file=data/Treg_data_S33.Rdump output file=save_csv/${modelname}_c2.csv &
-mpirun -vvvv stan_models/MAP_${modelname} sample num_samples=1000 num_warmup=300 random seed=5689 id=3 data file=data/Treg_data_S33.Rdump output file=save_csv/${modelname}_c3.csv 
+mpirun -vvvv stan_models/MAP_${modelname} sample num_samples=1000 num_warmup=300 random seed=5689 id=1 data file=data/Treg_Newdata_S33.Rdump output file=save_csv/${modelname}_c1.csv &
+mpirun -vvvv stan_models/MAP_${modelname} sample num_samples=1000 num_warmup=300 random seed=5690 id=2 data file=data/Treg_Newdata_S33.Rdump output file=save_csv/${modelname}_c2.csv &
+mpirun -vvvv stan_models/MAP_${modelname} sample num_samples=1000 num_warmup=300 random seed=5691 id=3 data file=data/Treg_Newdata_S33.Rdump output file=save_csv/${modelname}_c3.csv 
