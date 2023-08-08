@@ -129,34 +129,30 @@ functions{
   // rate of cell division depending on cell age
   real rho_age(real age, real[] parms){
     real rho   = parms[4];
-    real r_rho = parms[5];
-
-    real value  = rho * exp(-r_rho * age);
-
+    real value  = rho;  // doesnt cahnge with cell age or host age
     return value;
   }
 
   // function that calculates intgral of net loss rate --  solved analytically to speed up the numerical integration
   real lambda_integ(real lo_lim, real up_lim, real[] parms){
-    real delta = parms[3];
+    real del0  = parms[3];
     real rho   = parms[4];
-    real r_rho = parms[5];
+    real r_del = parms[5];
 
-    real value = (delta * (up_lim - lo_lim)) + ((rho/r_rho) * (exp(-r_rho * up_lim) - exp(-r_rho * lo_lim)));
+    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) - rho * (up_lim - lo_lim);
     return value;
   }
 
   // function that calculates intgral of net process rate --  solved analytically to speed up the numerical integration
   real alpha_integ(real lo_lim, real up_lim, real[] parms){
-    real delta = parms[3];
+    real del0  = parms[3];
     real rho   = parms[4];
-    real r_rho = parms[5];
+    real r_del = parms[5];
 
-    real value = (delta * (up_lim - lo_lim)) + ((rho/r_rho) * (exp(-r_rho * lo_lim) - exp(-r_rho * up_lim)));
+    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) + rho * (up_lim - lo_lim);
     return value;
   }
 
-  
   // Cell age distribution of the initial cohort
   real Asm_init_age(real age, real time, real[] parms) {
     real t0 = 40.0;
@@ -476,7 +472,7 @@ functions{
   real donor_theta_ki_age(real ki, real age, real time, real[] parms){
     real t0 = 40.0;
     real beta  = 1/3.5;             // rate of loss of ki67 expression.
-    real tau = -log(ki)/beta;       // time since cell divisions
+    real tau = -log(ki)/beta;     // time since cell divisions
     real value;
 
     if (ki <= exp(-beta * age)) {
@@ -928,17 +924,16 @@ model{
   rho ~ normal(0.005, 0.3);
   r_del ~ normal(0.0, 0.3);
 
-  sigma_counts ~ normal(0.5, 0.5);
-  sigma_Nfd ~ normal(0.4, 0.5);
-  sigma_donor_ki ~ normal(0.3, 0.5);
-  sigma_host_ki ~ normal(0.2, 2);
+  sigma_counts ~ normal(0.4, 0.1);
+  sigma_Nfd ~ normal(0.2, 0.05);
+  sigma_donor_ki ~ normal(0.03, 0.05);
+  sigma_host_ki ~ normal(0.03, 0.05);
 
   log(counts_naive) ~ normal(log(counts_naive_mean), sigma_counts);
   asinsqrt_array(Nfd_naive) ~ normal(asinsqrt_array(to_array_1d(Nfd_naive_mean)), sigma_Nfd);
   asinsqrt_array(ki_donor_naive) ~ normal(asinsqrt_array(to_array_1d(ki_donor_naive_mean)), sigma_donor_ki);
   asinsqrt_array(ki_host_naive) ~ normal(asinsqrt_array(to_array_1d(ki_host_naive_mean)), sigma_host_ki);
 }
-
 
 generated quantities{
   real y_chi_pred1[numPred, 4];
@@ -961,6 +956,7 @@ generated quantities{
   real ki_donor_naive_mean_pred3[numPred];     real ki_donor_naive_pred3[numPred];  
   real ki_donor_naive_mean_pred4[numPred];     real ki_donor_naive_pred4[numPred]; 
    
+
   real ki_host_naive_mean_pred1[numPred];   real ki_host_naive_pred1[numPred]; 
   real ki_host_naive_mean_pred2[numPred];   real ki_host_naive_pred2[numPred]; 
   real ki_host_naive_mean_pred3[numPred];   real ki_host_naive_pred3[numPred]; 

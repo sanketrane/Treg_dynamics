@@ -318,15 +318,15 @@ model{
   rho_D ~ normal(0.005, 0.25);
   delta_D ~ normal(0.01, 0.25);
   rho_I ~ normal(0.01, 0.25);
-  y1_0 ~ normal(9, 2.5);
+  y1_0 ~ normal(11, 2.5);
   y2_0 ~ normal(11, 2.5);
   y3_0 ~ normal(9, 2.5);
-  y4_0 ~ normal(11, 2.5);
+  y4_0 ~ normal(9, 2.5);
 
-  sigma_counts_naive ~ normal(0.5, 0.1);
-  sigma_Nfd_naive ~ normal(0.4, 0.05);
-  sigma_donor_ki_naive ~ normal(0.3, 0.5);
-  sigma_host_ki_naive ~ normal(0.2, 2);
+  sigma_counts_naive ~ normal(0.4, 0.1);
+  sigma_Nfd_naive ~ normal(0.2, 0.05);
+  sigma_donor_ki_naive ~ normal(0.03, 0.05);
+  sigma_host_ki_naive ~ normal(0.03, 0.05);
 
   log(counts_naive) ~ normal(log(counts_naive_mean), sigma_counts_naive);
   asinsqrt_array(Nfd_naive) ~ normal(asinsqrt_array(to_array_1d(Nfd_naive_mean)), sigma_Nfd_naive);

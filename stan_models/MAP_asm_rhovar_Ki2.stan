@@ -928,10 +928,10 @@ model{
   rho ~ normal(0.005, 0.3);
   r_del ~ normal(0.0, 0.3);
 
-  sigma_counts ~ normal(0.5, 0.5);
-  sigma_Nfd ~ normal(0.4, 0.5);
-  sigma_donor_ki ~ normal(0.3, 0.5);
-  sigma_host_ki ~ normal(0.2, 2);
+  sigma_counts ~ normal(0.4, 0.1);
+  sigma_Nfd ~ normal(0.2, 0.05);
+  sigma_donor_ki ~ normal(0.03, 0.05);
+  sigma_host_ki ~ normal(0.03, 0.05);
 
   log(counts_naive) ~ normal(log(counts_naive_mean), sigma_counts);
   asinsqrt_array(Nfd_naive) ~ normal(asinsqrt_array(to_array_1d(Nfd_naive_mean)), sigma_Nfd);
@@ -961,6 +961,7 @@ generated quantities{
   real ki_donor_naive_mean_pred3[numPred];     real ki_donor_naive_pred3[numPred];  
   real ki_donor_naive_mean_pred4[numPred];     real ki_donor_naive_pred4[numPred]; 
    
+
   real ki_host_naive_mean_pred1[numPred];   real ki_host_naive_pred1[numPred]; 
   real ki_host_naive_mean_pred2[numPred];   real ki_host_naive_pred2[numPred]; 
   real ki_host_naive_mean_pred3[numPred];   real ki_host_naive_pred3[numPred]; 

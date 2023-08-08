@@ -134,12 +134,44 @@ functions{
   }
 
   // function that calculates intgral of net loss rate --  solved analytically to speed up the numerical integration
+  real lambda_integ2(real lo_lim, real up_lim, real[] parms){
+    real del0  = parms[3];
+    real rho   = parms[4];
+    real r_del = parms[5];
+
+    // lambda(a) = delta_0 * exp(-r_del * a) - rho;
+
+    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) - rho * (up_lim - lo_lim);
+    return value;
+  }
+
+  // function that calculates intgral of net process rate --  solved analytically to speed up the numerical integration
+  real alpha_integ2(real lo_lim, real up_lim, real[] parms){
+    real del0  = parms[3];
+    real rho   = parms[4];
+    real r_del = parms[5];
+
+    // alpha(a) = delta_0 * exp(-r_del * a) + rho;
+
+    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) + rho * (up_lim - lo_lim);
+    return value;
+  }
+
+  // function that calculates intgral of net loss rate --  solved analytically to speed up the numerical integration
   real lambda_integ(real lo_lim, real up_lim, real[] parms){
     real del0  = parms[3];
     real rho   = parms[4];
     real r_del = parms[5];
 
-    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) - rho * (up_lim - lo_lim);
+    // lambda(a) = delta_0/1+(a/r_del)^2 - rho;
+
+    real value;
+    
+    if (lo_lim == 0){
+      value = del0 * r_del * atan(up_lim/r_del) - rho * up_lim;
+    } else {
+      value = del0 * r_del * (atan(r_del/lo_lim) - atan(r_del/up_lim)) + rho * (lo_lim - up_lim);
+    }
     return value;
   }
 
@@ -149,7 +181,15 @@ functions{
     real rho   = parms[4];
     real r_del = parms[5];
 
-    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) + rho * (up_lim - lo_lim);
+    // alpha(a) = delta_0/1+(a/r_del)^2 + rho;
+
+    real value;
+    
+    if (lo_lim == 0){
+      value = del0 * r_del * atan(up_lim/r_del) + rho * up_lim;
+    } else {
+      value = del0 * r_del * (atan(r_del/lo_lim) - atan(r_del/up_lim)) + rho * (up_lim - lo_lim);
+    }
     return value;
   }
 
@@ -863,10 +903,10 @@ transformed data{
 
 parameters{
   real<lower=1E5, upper=3E6> N0;                  // total cells counts at t0
+  real<lower=0.0>  p_age;
   real<lower=0.0, upper=1.0> delta;
   real<lower=0.0, upper=1.0> rho;
   real r_del;
-  real p_age;
 
   real<lower=0> sigma_counts;
   real<lower=0> sigma_Nfd;
@@ -888,10 +928,10 @@ transformed parameters{
   vector[numObs4] ki_host_naive_mean;              // ODE predictions for naive Treg host ki67 proportions in thymus
 
   global_params[1] = N0;
-  global_params[2] = delta;
-  global_params[3] = rho;
-  global_params[4] = r_del;
-  global_params[5] = p_age;
+  global_params[2] = p_age;
+  global_params[3] = delta;
+  global_params[4] = rho;
+  global_params[5] = r_del;
 
   // combining the output from all the shards
   y_mean_stacked = map_rect(math_reduce, global_params, local_params, x_r, x_i);
@@ -919,10 +959,10 @@ transformed parameters{
 
 model{
   N0 ~ normal(1e6, 3E5);
+  p_age ~ normal(0.0, 0.3);
   delta ~ normal(0.05, 0.3);
   rho ~ normal(0.005, 0.3);
   r_del ~ normal(0.0, 0.3);
-  p_age ~ normal(0.0, 0.3);
 
   sigma_counts ~ normal(0.5, 0.5);
   sigma_Nfd ~ normal(0.4, 0.5);
@@ -941,16 +981,26 @@ generated quantities{
   real y_chi_pred3[numPred, 4];
   real y_chi_pred4[numPred, 4];
 
-  real y3_mean_pred1[numPred];  real y4_mean_pred1[numPred];  real y5_mean_pred1[numPred];  real y6_mean_pred1[numPred];
-  real y3_mean_pred2[numPred];  real y4_mean_pred2[numPred];  real y5_mean_pred2[numPred];  real y6_mean_pred2[numPred];
-  real y3_mean_pred3[numPred];  real y4_mean_pred3[numPred];  real y5_mean_pred3[numPred];  real y6_mean_pred3[numPred];
-  real y3_mean_pred4[numPred];  real y4_mean_pred4[numPred];  real y5_mean_pred4[numPred];  real y6_mean_pred4[numPred];
+  real counts_naive_mean_pred1[numPred];    real counts_naive_pred1[numPred]; 
+  real counts_naive_mean_pred2[numPred];    real counts_naive_pred2[numPred]; 
+  real counts_naive_mean_pred3[numPred];    real counts_naive_pred3[numPred]; 
+  real counts_naive_mean_pred4[numPred];    real counts_naive_pred4[numPred]; 
 
-  // outer envelopes
-  real counts_pred1[numPred];  real Nfd_pred1[numPred]; real donorki_pred1[numPred]; real hostki_pred1[numPred];
-  real counts_pred2[numPred];  real Nfd_pred2[numPred]; real donorki_pred2[numPred]; real hostki_pred2[numPred];
-  real counts_pred3[numPred];  real Nfd_pred3[numPred]; real donorki_pred3[numPred]; real hostki_pred3[numPred];
-  real counts_pred4[numPred];  real Nfd_pred4[numPred]; real donorki_pred4[numPred]; real hostki_pred4[numPred];
+  real Nfd_naive_mean_pred1[numPred];     real Nfd_naive_pred1[numPred];       
+  real Nfd_naive_mean_pred2[numPred];     real Nfd_naive_pred2[numPred];    
+  real Nfd_naive_mean_pred3[numPred];     real Nfd_naive_pred3[numPred];    
+  real Nfd_naive_mean_pred4[numPred];     real Nfd_naive_pred4[numPred];  
+
+  real ki_donor_naive_mean_pred1[numPred];     real ki_donor_naive_pred1[numPred];  
+  real ki_donor_naive_mean_pred2[numPred];     real ki_donor_naive_pred2[numPred];  
+  real ki_donor_naive_mean_pred3[numPred];     real ki_donor_naive_pred3[numPred];  
+  real ki_donor_naive_mean_pred4[numPred];     real ki_donor_naive_pred4[numPred]; 
+   
+
+  real ki_host_naive_mean_pred1[numPred];   real ki_host_naive_pred1[numPred]; 
+  real ki_host_naive_mean_pred2[numPred];   real ki_host_naive_pred2[numPred]; 
+  real ki_host_naive_mean_pred3[numPred];   real ki_host_naive_pred3[numPred]; 
+  real ki_host_naive_mean_pred4[numPred];   real ki_host_naive_pred4[numPred]; 
 
   real host_counts_pred1[numPred]; real host_counts_pred2[numPred];  real host_counts_pred3[numPred]; real host_counts_pred4[numPred];
   real donor_counts_pred1[numPred]; real donor_counts_pred2[numPred];  real donor_counts_pred3[numPred]; real donor_counts_pred4[numPred];
@@ -964,10 +1014,10 @@ generated quantities{
   vector[numObs4] log_lik_host_ki;
 
   // PDE solution -- predictions for total counts, Nfd, donor_ki, host_ki
-  y3_mean_pred1 = N_pooled_time(ts_pred1,  tb_pred1, to_array_1d(global_params));
-  y3_mean_pred2 = N_pooled_time(ts_pred2,  tb_pred2, to_array_1d(global_params));
-  y3_mean_pred3 = N_pooled_time(ts_pred3,  tb_pred3, to_array_1d(global_params));
-  y3_mean_pred4 = N_pooled_time(ts_pred4,  tb_pred4, to_array_1d(global_params));
+  counts_naive_mean_pred1 = N_pooled_time(ts_pred1,  tb_pred1, to_array_1d(global_params));
+  counts_naive_mean_pred2 = N_pooled_time(ts_pred2,  tb_pred2, to_array_1d(global_params));
+  counts_naive_mean_pred3 = N_pooled_time(ts_pred3,  tb_pred3, to_array_1d(global_params));
+  counts_naive_mean_pred4 = N_pooled_time(ts_pred4,  tb_pred4, to_array_1d(global_params));
 
   host_counts_pred1 = N_host_time(ts_pred1, tb_pred1, to_array_1d(global_params));
   host_counts_pred2 = N_host_time(ts_pred2, tb_pred2, to_array_1d(global_params));
@@ -977,54 +1027,54 @@ generated quantities{
   donor_counts_pred1 = N_donor_time(ts_pred1, tb_pred1, to_array_1d(global_params));
   donor_counts_pred2 = N_donor_time(ts_pred2, tb_pred2, to_array_1d(global_params));
   donor_counts_pred3 = N_donor_time(ts_pred3, tb_pred3, to_array_1d(global_params));
-  donor_counts_pred4 = N_donor_time(ts_pred4, tb_pred3, to_array_1d(global_params));
+  donor_counts_pred4 = N_donor_time(ts_pred4, tb_pred4, to_array_1d(global_params));
 
   host_ki_pred1 = U_host_time(ts_pred1, tb_pred1, to_array_1d(global_params));
   host_ki_pred2 = U_host_time(ts_pred2, tb_pred2, to_array_1d(global_params));
   host_ki_pred3 = U_host_time(ts_pred3, tb_pred3, to_array_1d(global_params));
-  host_ki_pred4 = U_host_time(ts_pred4, tb_pred3, to_array_1d(global_params));
+  host_ki_pred4 = U_host_time(ts_pred4, tb_pred4, to_array_1d(global_params));
 
   donor_ki_pred1 = U_donor_time(ts_pred1, tb_pred1, to_array_1d(global_params));
   donor_ki_pred2 = U_donor_time(ts_pred2, tb_pred2, to_array_1d(global_params));
   donor_ki_pred3 = U_donor_time(ts_pred3, tb_pred3, to_array_1d(global_params));
-  donor_ki_pred4 = U_donor_time(ts_pred4, tb_pred3, to_array_1d(global_params));
+  donor_ki_pred4 = U_donor_time(ts_pred4, tb_pred4, to_array_1d(global_params));
 
 
   for (i in 1:numPred){
-    y4_mean_pred1[i] = donor_counts_pred1[i]/(y3_mean_pred1[i] * Chi_spline(ts_pred1[i] - tb_pred1[i]));
-    y4_mean_pred2[i] = donor_counts_pred2[i]/(y3_mean_pred2[i] * Chi_spline(ts_pred2[i] - tb_pred2[i]));
-    y4_mean_pred3[i] = donor_counts_pred3[i]/(y3_mean_pred3[i] * Chi_spline(ts_pred3[i] - tb_pred3[i]));
-    y4_mean_pred3[i] = donor_counts_pred3[i]/(y3_mean_pred3[i] * Chi_spline(ts_pred4[i] - tb_pred3[i]));
+    Nfd_naive_mean_pred1[i] = donor_counts_pred1[i]/(counts_naive_mean_pred1[i] * Chi_spline(ts_pred1[i] - tb_pred1[i]));
+    Nfd_naive_mean_pred2[i] = donor_counts_pred2[i]/(counts_naive_mean_pred2[i] * Chi_spline(ts_pred2[i] - tb_pred2[i]));
+    Nfd_naive_mean_pred3[i] = donor_counts_pred3[i]/(counts_naive_mean_pred3[i] * Chi_spline(ts_pred3[i] - tb_pred3[i]));
+    Nfd_naive_mean_pred4[i] = donor_counts_pred4[i]/(counts_naive_mean_pred4[i] * Chi_spline(ts_pred4[i] - tb_pred4[i]));
 
-    y5_mean_pred1[i] = donor_ki_pred1[i]/donor_counts_pred1[i];
-    y5_mean_pred2[i] = donor_ki_pred2[i]/donor_counts_pred2[i];
-    y5_mean_pred3[i] = donor_ki_pred3[i]/donor_counts_pred3[i];
-    y5_mean_pred4[i] = donor_ki_pred4[i]/donor_counts_pred4[i];
+    ki_donor_naive_mean_pred1[i] = donor_ki_pred1[i]/donor_counts_pred1[i];
+    ki_donor_naive_mean_pred2[i] = donor_ki_pred2[i]/donor_counts_pred2[i];
+    ki_donor_naive_mean_pred3[i] = donor_ki_pred3[i]/donor_counts_pred3[i];
+    ki_donor_naive_mean_pred4[i] = donor_ki_pred4[i]/donor_counts_pred4[i];
 
-    y6_mean_pred1[i] = host_ki_pred1[i]/host_counts_pred1[i];
-    y6_mean_pred2[i] = host_ki_pred2[i]/host_counts_pred2[i];
-    y6_mean_pred3[i] = host_ki_pred3[i]/host_counts_pred3[i];
-    y6_mean_pred4[i] = host_ki_pred4[i]/host_counts_pred4[i];
+    ki_host_naive_mean_pred1[i] = host_ki_pred1[i]/host_counts_pred1[i];
+    ki_host_naive_mean_pred2[i] = host_ki_pred2[i]/host_counts_pred2[i];
+    ki_host_naive_mean_pred3[i] = host_ki_pred3[i]/host_counts_pred3[i];
+    ki_host_naive_mean_pred4[i] = host_ki_pred4[i]/host_counts_pred4[i];
 
-    counts_pred1[i] = exp(normal_rng(log(y3_mean_pred1[i]), sigma_counts));
-    counts_pred2[i] = exp(normal_rng(log(y3_mean_pred2[i]), sigma_counts));
-    counts_pred3[i] = exp(normal_rng(log(y3_mean_pred3[i]), sigma_counts));
-    counts_pred4[i] = exp(normal_rng(log(y3_mean_pred4[i]), sigma_counts));
+    counts_naive_pred1[i] = exp(normal_rng(log(counts_naive_mean_pred1[i]), sigma_counts));
+    counts_naive_pred2[i] = exp(normal_rng(log(counts_naive_mean_pred2[i]), sigma_counts));
+    counts_naive_pred3[i] = exp(normal_rng(log(counts_naive_mean_pred3[i]), sigma_counts));
+    counts_naive_pred4[i] = exp(normal_rng(log(counts_naive_mean_pred4[i]), sigma_counts));
 
-    Nfd_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y4_mean_pred1[i]), sigma_Nfd));
-    Nfd_pred2[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y4_mean_pred2[i]), sigma_Nfd));
-    Nfd_pred3[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y4_mean_pred3[i]), sigma_Nfd));
-    Nfd_pred4[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y4_mean_pred4[i]), sigma_Nfd));
+    Nfd_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(Nfd_naive_mean_pred1[i]), sigma_Nfd));
+    Nfd_naive_pred2[i] = asinsqrt_inv(normal_rng(asinsqrt_real(Nfd_naive_mean_pred2[i]), sigma_Nfd));
+    Nfd_naive_pred3[i] = asinsqrt_inv(normal_rng(asinsqrt_real(Nfd_naive_mean_pred3[i]), sigma_Nfd));
+    Nfd_naive_pred4[i] = asinsqrt_inv(normal_rng(asinsqrt_real(Nfd_naive_mean_pred4[i]), sigma_Nfd));
 
-    donorki_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y5_mean_pred1[i]), sigma_donor_ki));
-    donorki_pred2[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y5_mean_pred2[i]), sigma_donor_ki));
-    donorki_pred3[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y5_mean_pred3[i]), sigma_donor_ki));
-    donorki_pred4[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y5_mean_pred4[i]), sigma_donor_ki));
+    ki_donor_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_donor_naive_mean_pred1[i]), sigma_donor_ki));
+    ki_donor_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_donor_naive_mean_pred2[i]), sigma_donor_ki));
+    ki_donor_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_donor_naive_mean_pred3[i]), sigma_donor_ki));
+    ki_donor_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_donor_naive_mean_pred4[i]), sigma_donor_ki));
 
-    hostki_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y6_mean_pred1[i]), sigma_host_ki));
-    hostki_pred2[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y6_mean_pred2[i]), sigma_host_ki));
-    hostki_pred3[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y6_mean_pred3[i]), sigma_host_ki));
-    hostki_pred4[i] = asinsqrt_inv(normal_rng(asinsqrt_real(y6_mean_pred4[i]), sigma_host_ki));
+    ki_host_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_host_naive_mean_pred1[i]), sigma_host_ki));
+    ki_host_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_host_naive_mean_pred2[i]), sigma_host_ki));
+    ki_host_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_host_naive_mean_pred3[i]), sigma_host_ki));
+    ki_host_naive_pred1[i] = asinsqrt_inv(normal_rng(asinsqrt_real(ki_host_naive_mean_pred4[i]), sigma_host_ki));
   }
 
   // calculating log likelihoods
