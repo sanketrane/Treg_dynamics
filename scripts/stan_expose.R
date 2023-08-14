@@ -8,12 +8,12 @@ modelName <- "asm_deltavar_Ki2"
 outputDir <- file.path("output_fit")
 rstan::expose_stan_functions(file.path("stan_models", paste0("MAP_", modelName, ".stan")))
 #params <- c(1.363198e+05, 0.01, 0.04, 0.02, 0.002)
-params <- c(1084491, 0.01, 0.08, 0.016794203, 0.01)
+params <- c(1096284, 0.00624, 0.03, 0.017, 0.0012)
 par_inc <- c(0.3, 0.01, 0.05, 0.02, 10, 11, 9, 10)
 theta <- c(0)
 x_i <- c(60)
 x_r <- c(100)
-math_reduce(par_inc, theta, x_r, x_i)
+math_reduce(params, theta, x_r, x_i)
 
 ## ts
 ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
@@ -30,6 +30,9 @@ chi_vec1 <- sapply(ts_pred1 - tb_pred1, Chi_spline)
 chi_vec2 <- sapply(ts_pred2 - tb_pred2, Chi_spline)
 chi_vec3 <- sapply(ts_pred3 - tb_pred3, Chi_spline)
 chi_vec4 <- sapply(ts_pred4 - tb_pred4, Chi_spline)
+
+ggplot()+
+  geom_line(aes(x=ts_pred1 - tb_pred1, y=chi_vec1))
 
 total_counts1 <- N_pooled_time(ts_pred1, tb_pred1, params)
 total_counts2 <- N_pooled_time(ts_pred2, tb_pred2, params)

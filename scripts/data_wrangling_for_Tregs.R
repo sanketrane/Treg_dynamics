@@ -320,7 +320,7 @@ source_join %>%
 
 source_join %>% 
   mutate(FoxP3_Neg_SP4 = round(fd_FoxP3_neg_SP4, 4)) %>%
-  select(-contains("total"), -contains("fd")) %>%
+  select(-contains("total"), contains("fd")) %>%
   write.csv(file = "data/Chimerism_thymicSource.csv", row.names = FALSE)
 
 

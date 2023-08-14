@@ -23,10 +23,11 @@ SP4_chimerism_df <- read_csv("data/Chimerism_thymicSource.csv") %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 63, 'agegroup1',
                              ifelse(age.at.BMT <= 88, 'agegroup2',
                                     'agegroup3'))) %>%
-  group_by(ageBMT_bin) %>%
-  mutate(MeanAgeBMT = mean(age.at.BMT)) %>%
-  filter(mouse.ID != 213374,
-         mouse.ID != 202893)
+  select(contains("age"), contains("fd")) 
+  # group_by(ageBMT_bin) %>%
+  # mutate(MeanAgeBMT = mean(age.at.BMT)) %>%
+  # filter(mouse.ID != 213374,
+  #        mouse.ID != 202893)%>
 
 SP4_donorki67_df <- read_csv("data/donorKi67_thymicSource.csv") %>%
   mutate(SP4_ki = FoxP3_neg_SP4_ki,
@@ -41,10 +42,19 @@ SP4_hostki67_df <- read_csv("data/hostKi67_thymicSource.csv")%>%
                                     'agegroup3')))
 
 
+ggplot() + 
+  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=fd_DP1), col =2) +
+  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=fd_FoxP3_pos_SP4), col =3) +
+  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=fd_FoxP3_neg_SP4), col =4) +
+  ylim(0,1) + #scale_x_log10(limits=c(10, 750)) +
+  labs(title = 'Donor fraction in FoxP3 negative SP4 cells',  y=NULL,  x = 'Days post BMT') 
+
 ## vectors depicting timeseq for predictions 
 timeseq <- seq(63, 450)  ## host age
 dpt_seq <- seq(14, 300)   ## days post BMT
   
+
+
 
 ## fd_fit
 ## phenomenological function
@@ -56,16 +66,16 @@ chi_spline <- function(Time, chiEst, qEst){
 
 ## LL function
 logit_transf <- function(x){asin(sqrt(x))}
-SP4_chi_nlm <- nls(logit_transf(SP4_chi) ~ logit_transf(chi_spline(age.at.S1K - age.at.BMT, chiEst, qEst)),
+SP4_chi_nlm <- nls(logit_transf(fd_FoxP3_neg_SP4) ~ logit_transf(chi_spline(age.at.S1K - age.at.BMT, chiEst, qEst)),
                   data =  SP4_chimerism_df,
                   start = list(chiEst=0.84, qEst=0.1))
 SP4_chi_pars <- coef(SP4_chi_nlm)
 
 # prediction
 SP4chi_fit <- data.frame(dpt_seq, "y_sp" = chi_spline(dpt_seq, SP4_chi_pars[1], SP4_chi_pars[2]))
-SP4chi_fit_m <- data.frame(dpt_seq, "y_sp" = chi_spline(dpt_seq, 0.8, SP4_chi_pars[2]))
+SP4chi_fit_m <- data.frame(dpt_seq, "y_sp" = chi_spline(dpt_seq, 0.8, 0.05))
 ggplot() + 
-  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=SP4_chi, col=ageBMT_bin), size =2) +
+  geom_point(data=SP4_chimerism_df, aes(x=age.at.S1K-age.at.BMT, y=fd_FoxP3_neg_SP4, col=ageBMT_bin), size =2) +
   geom_line(data = SP4chi_fit, aes(x = dpt_seq , y = y_sp), col=4, size =1) + 
   geom_line(data = SP4chi_fit_m, aes(x = dpt_seq , y = y_sp), col=2, size =1) + 
   #geom_text(data = SP4_chimerism_df, aes(x = age.at.S1K-age.at.BMT , y = SP4_chi, label=mouse.ID), col=4, size =4) + 

@@ -44,7 +44,7 @@ functions{
     // chiEst is the level of stabilised chimerism in the source (FoxP3 negative SP4) compartment
     // qEst is the rate with which cimerism changes in the source (FoxP3 negative SP4) compartment
     // spline fitted separately to the donor chimerism in the thymic FoxP3 negative SP4 T cells to estimate the parameters
-    real value;  real chiEst = 0.8;   real qEst = 0.05;
+    real value;  real chiEst = 0.8;   real qEst = 0.3;
     if (time - 10 < 0){              // t0 = 14 -- assumption: no donor cells seen in FoxP3neg SP4 compartment for 2 weeks
       value = 0;
     } else {
