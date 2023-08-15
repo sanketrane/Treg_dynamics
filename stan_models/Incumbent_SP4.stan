@@ -4,8 +4,6 @@ functions{
  real sp_numbers(real time) {
    real t0 = 40.0;     // mean mouse age at BMT for the first ageBMT bin
    real value;
-   // spline fitted separately to the counts of thymic FoxP3 negative SP4 T cells to estimate the parameters
-   //real b0  = 4.3; real b1 = 5.1;  real nu = 40 ;
    // spline fitted separately to the counts of thymic total SP4 T cells to estimate the parameters
    real b0  = 5.94; real b1 = 6.52;  real nu = 91 ;
    //best fitting spline
@@ -34,7 +32,7 @@ functions{
     return value;
   }
 
-  // spline3 --
+// spline3 --
 // proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
 real donor_eps_spline(real time){
   real t0 = 66.0;     // mean mouse age at BMT for the first ageBMT bin

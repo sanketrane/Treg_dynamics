@@ -296,9 +296,9 @@ Treg_join %>%
   write.csv(file = "data/Counts_Treg.csv", row.names = FALSE)
 
 Treg_fd_Norm %>%
-  mutate(naive = round(memoryTregs_Nfd_periph, 4),
+  mutate(naive = round(naiveTregs_Nfd_periph, 4),
          memory = round(memoryTregs_Nfd_periph, 4)) %>%
-  select(-contains("Nfd"), -contains('memory')) %>%
+  select(-contains("Nfd")) %>%
   write.csv(file = "data/Nfd_Treg.csv", row.names = FALSE)
 
 Treg_hostKi67 %>%

@@ -109,7 +109,7 @@ rstan::stan_rdump(c("numObs1", "numObs2", "numObs3", "numObs4", "n_solve", "n_sh
              "counts_memory",  "Nfd_memory", "ki_donor_memory", "ki_host_memory",
              "ts_pred1", "ts_pred2", "ts_pred3", "ts_pred4",
              "tb_pred1", "tb_pred2", "tb_pred3",  "tb_pred4",  "numPred"),
-           file = file.path('data', paste0('Treg_Newdata_S', n_shards,".Rdump")))
+           file = file.path('data', paste0('Treg_data_shards', n_shards,".Rdump")))
 
 
 
