@@ -4,9 +4,9 @@ library(rstan)
 library(tidyverse)
 
 ## model
-modelName <- "asm_deltavar_Ki2"
+modelName <- "ASM_deltavar_FP3"
 outputDir <- file.path("output_fit")
-rstan::expose_stan_functions(file.path("stan_models", paste0("MAP_", modelName, ".stan")))
+rstan::expose_stan_functions(file.path("stan_models", paste0(modelName, ".stan")))
 #params <- c(1.363198e+05, 0.01, 0.04, 0.02, 0.002)
 params <- c(1096284, 0.00624, 0.03, 0.017, 0.0012)
 par_inc <- c(0.3, 0.01, 0.05, 0.02, 10, 11, 9, 10)
@@ -24,6 +24,19 @@ tb_pred1 <- rep(45, 300)
 tb_pred2 <- rep(66, 300)
 tb_pred3 <- rep(76, 300)
 tb_pred4 <- rep(118, 300)
+
+kseq <- seq(0, 1, 0.01)
+ki_dist_i <- sapply(kseq, ki_dist_theta, 2)
+ggplot()+
+  geom_point(aes(x=kseq, y=ki_dist_i))
+
+
+ki_d <- function(ki){
+  r_ki_init = 5.69
+  exp(-ki * r_ki_init)/((1 - exp(-r_ki_init))/r_ki_init)
+}
+
+integrate(ki_d, exp(-1), 1)
 
 
 chi_vec1 <- sapply(ts_pred1 - tb_pred1, Chi_spline)
