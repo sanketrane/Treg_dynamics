@@ -70,10 +70,10 @@ functions{
 // spline3 --
 // proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
 real donor_eps_spline(real time){
-  real t0 = 66.0;     // mean mouse age at BMT for the first ageBMT bin
+  real t0 = 40.0;     // mean mouse age at BMT for the first ageBMT bin
   //parameters estimated from spline fit to the timecourse of ki67 fraction in the donor-derived FoxP3 negative SP4 T cells
-  real b0 = 0.37; real b1= 0.27; real eps_f = 16.2;
-  return b0 + (b1/(1 + (time/eps_f)^2));
+  real b0 = 0.37; real b1= 0.63; real eps_f = 35;
+  return b0 + (b1/(1 + (time/eps_f)^4));
 }
 
 // Ki67 distribution within the thymic influx -- varies with time

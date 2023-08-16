@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent"
+modelName <- "Incumbent_SP4"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -25,12 +25,11 @@ LooDir <- file.path('loo_fit')
 source(file.path(toolsDir, "stanTools.R"))                # save results in new folder
 
 # compiling multiple stan objects together that ran on different nodes
-stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
+#stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
 stanfit2 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c2",".csv")))
 stanfit3 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c3",".csv")))
-stanfit4 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c4",".csv")))
 
-fit <- sflist2stanfit(list(stanfit3, stanfit4))
+fit <- sflist2stanfit(list(stanfit2, stanfit3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model

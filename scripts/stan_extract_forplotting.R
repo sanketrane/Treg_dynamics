@@ -5,10 +5,10 @@ ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)
 ts_pred2 <- 10^seq(log10(91), log10(450), length.out = 300)
 ts_pred3 <- 10^seq(log10(90), log10(450), length.out = 300)
 ts_pred4 <- 10^seq(log10(174), log10(450), length.out = 300)
-tb_pred1 <- rep(45, 300)
+tb_pred1 <- rep(49, 300)
 tb_pred2 <- rep(66, 300)
-tb_pred3 <- rep(76, 300)
-tb_pred4 <- rep(118, 300)
+tb_pred3 <- rep(77, 300)
+tb_pred4 <- rep(128, 300)
 
 # naive Treg counts in the thymus with 90% envelopes
 Counts_naive_pred <- as.data.frame(fit, pars = c("counts_naive_mean_pred1", "counts_naive_mean_pred2",

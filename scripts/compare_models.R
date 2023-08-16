@@ -42,47 +42,46 @@ saveDir <- file.path(projectDir, 'save_csv')
 
 
 ## model specific details that needs to be change for every run
-M1 <- "Incumbent"
-M2 <- "Incumbent_tightSigma"
-M3 <- "Incumbent_recirc"
+M1 <- "Incumbent_FP3"
+M2 <- "Incumbent_SP4"
 
 # compiling multiple stan objects together that ran on different nodes
-stanfitM1.1 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c1", ".csv")))
-stanfitM1.2 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c2",".csv")))
+#stanfitM1.1 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c1", ".csv")))
+#stanfitM1.2 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c2",".csv")))
 stanfitM1.3 <- read_stan_csv(file.path(saveDir, paste0(M1, "_c3",".csv")))
 
 fit1 <- sflist2stanfit(list(stanfitM1.3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
-num_pars_M1 <- which(fit1@model_pars %in% "sigma_counts_per") -1      
+num_pars_M1 <- which(fit1@model_pars %in% "sigma_counts_naive") -1      
 params_M1 <- fit1@model_pars[1:num_pars_M1]
 
 
 # compiling multiple stan objects together that ran on different nodes
-stanfitM2.1 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c1", ".csv")))
+#stanfitM2.1 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c1", ".csv")))
 stanfitM2.2 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c2",".csv")))
 stanfitM2.3 <- read_stan_csv(file.path(saveDir, paste0(M2, "_c3",".csv")))
 
-fit2 <- sflist2stanfit(list(stanfitM2.1, stanfitM2.2, stanfitM2.3))
+fit2 <- sflist2stanfit(list(stanfitM2.2, stanfitM2.3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
-num_pars_M2 <- which(fit2@model_pars %in% "sigma_counts_per") -1      
+num_pars_M2 <- which(fit2@model_pars %in% "sigma_counts_naive") -1      
 params_M2 <- fit2@model_pars[1:num_pars_M2]
 
 
-# compiling multiple stan objects together that ran on different nodes
-stanfitM3.1 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c1", ".csv")))
-stanfitM3.2 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c2",".csv")))
-stanfitM3.3 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c3",".csv")))
-
-fit3 <- sflist2stanfit(list(stanfitM3.3, stanfitM3.1))
+# # compiling multiple stan objects together that ran on different nodes
+# stanfitM3.1 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c1", ".csv")))
+# stanfitM3.2 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c2",".csv")))
+# stanfitM3.3 <- read_stan_csv(file.path(saveDir, paste0(M3, "_c3",".csv")))
+# 
+# fit3 <- sflist2stanfit(list(stanfitM3.3, stanfitM3.1))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
-num_pars_M3 <- which(fit3@model_pars %in% "sigma_counts_per") -1      
-params_M3 <- fit3@model_pars[1:num_pars_M3]
+# num_pars_M3 <- which(fit3@model_pars %in% "sigma_counts_per") -1      
+# params_M3 <- fit3@model_pars[1:num_pars_M3]
 
 
 ptable1 <- monitor(as.array(fit1, pars = params_M1), warmup = 0, print = FALSE)
@@ -94,29 +93,33 @@ out_table2 <- data.frame(ptable2[1:num_pars_M2, c(1, 4, 8)])
 names(out_table2) <- c('Estimates', 'par_lb', 'par_ub')
 
 
-ptable3 <- monitor(as.array(fit3, pars = params_M3), warmup = 0, print = FALSE)
-out_table3 <- data.frame(ptable3[1:num_pars_M3, c(1, 4, 8)])
-names(out_table3) <- c('Estimates', 'par_lb', 'par_ub')
+# ptable3 <- monitor(as.array(fit3, pars = params_M3), warmup = 0, print = FALSE)
+# out_table3 <- data.frame(ptable3[1:num_pars_M3, c(1, 4, 8)])
+# names(out_table3) <- c('Estimates', 'par_lb', 'par_ub')
 
 
-df_pars <- rbind(out_table1, out_table2, out_table3) %>%
-  mutate(parname = c(row.names(out_table1), row.names(out_table2), row.names(out_table3)),
-         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2), rep('M3', num_pars_M3))) %>%
+df_pars <- rbind(out_table1, out_table2) %>%
+  mutate(parname = c(row.names(out_table1), row.names(out_table2)),
+         Model = c(rep('M1', num_pars_M1), rep('M2', num_pars_M2))) %>%
   filter(!grepl("_0", parname))
 
-blank_data <- data.frame(parname = rep(c("alpha", "delta", "sigma"), 3),
-                         Param = rep(c("Rate of influx", "Loss rate", "Sigma"), 3),
-                         Model = c(rep('M1', 3), rep('M2', 3), rep('GT', 3)),
-                         Estimates = c(0.008,0.008,0.2,0.05,0.1,0.5, 0, 0, 0))
+blank_data <- data.frame(parname = rep(c("psi", "rho_D", "delta_D", "rho_I"), 2),
+                         Param = rep(c("Rate of influx", "Rate of division displaceable", "Rate of loss displaceable", "Rate of division Incumbent"), 2),
+                         Model = c(rep('M1', 4), rep('M2', 4)),
+                         Estimates = c(0.001, 0.003, 0.01, 0.01, 1.0, 0.05, 0.1, 1.0))
+
+fac_labels <- c(`psi`="Rate of influx", `rho_D`="Rate of division displaceable", 
+                `delta_D`="Rate of loss displaceable", `rho_I`="Rate of division Incumbent")
 
 ggplot(df_pars, aes(y=Estimates, x=factor(Model), col=Model))+
   labs(y=NULL) +
   geom_errorbar(aes(y=Estimates, ymin=par_lb, ymax=par_ub, x=Model),
                 width=0.2, linetype=1,  position=position_dodge(0.4)) +
-  #geom_blank(data = blank_data)+
+  geom_blank(data = blank_data)+
   geom_point(position=position_dodge(width=0.4), stat = "identity", size=4) + 
-  facet_wrap(~ factor(parname), scales = "free") + 
-  expand_limits(y = 0)  +
+  facet_wrap(~ factor(parname), scales = "free", labeller = as_labeller(fac_labels)) + 
+  #expand_limits(y = 0.01)  +
+  scale_y_log10()+
   myTheme + theme(axis.text.x=element_blank(),
                   axis.title.x=element_blank())
 

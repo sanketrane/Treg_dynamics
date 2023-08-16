@@ -130,14 +130,14 @@ source_hostKi67$TH.SP4 %>% mean()
 ## phenomenological function
 ki_spline <- function(age.at.S1K, b0, eps_f){
   Time = age.at.S1K   ###
-  t0 = 49
+  t0 = 40
   return(b0 * (1 + exp(-eps_f * (Time-t0))))
 }
 
 timeseq <- seq(40, 450)
 ki_spline <- function(age.at.S1K, b0, b1, eps_f){
-  Time = age.at.S1K - 66
-  return(b0 + (b1/(1 + (Time/eps_f)^2)))
+  Time = age.at.S1K - 40
+  return(b0 + (b1/(1 + (Time/eps_f)^4)))
 }
 
 
@@ -147,12 +147,12 @@ ki_nlm <- nls((TH.SP4/100) ~ (ki_spline(age.at.S1K, b0, b1, eps_f)),
 ki_pars <- coef(ki_nlm)
 
 ki_fit <- data.frame(timeseq, "y_sp" = ki_spline(timeseq, ki_pars[1], ki_pars[2], ki_pars[3]))
-#ki_fit_m <- data.frame(timeseq, "y_sp" = ki_spline(timeseq, 0.35, 6))
+ki_fit_m <- data.frame(timeseq, "y_sp" = ki_spline(timeseq, 0.37, 0.63, 35))
 
 ggplot() + 
   geom_point(data=source_donorKi67, aes(x=age.at.S1K, y=TH.SP4), col=4, size =2) +
-  geom_line(data = ki_fit, aes(x = timeseq , y = y_sp*100), col=4, size =1) + 
-  #geom_line(data = ki_fit_m, aes(x = timeseq , y = y_sp*100), col=2, size =1) + 
+  #geom_line(data = ki_fit, aes(x = timeseq , y = y_sp*100), col=4, size =1) + 
+  geom_line(data = ki_fit_m, aes(x = timeseq , y = y_sp*100), col=4, size =1) + 
   #scale_y_log10(limits=c(1e3, 2e5)) + xlim(40, 450)+
   labs(title = 'Ki poportions in donor SP4 cells',  y=NULL,  x = 'Host age (days)') 
 

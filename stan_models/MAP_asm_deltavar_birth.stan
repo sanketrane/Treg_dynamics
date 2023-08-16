@@ -1,42 +1,65 @@
 functions{
-   //spline 1
+  //spline 1
  // Timecourse of thymic CD4 SP population -- changes with time
- real sp_numbers(real time) {
-   real t0 = 40.0;     // mean mouse age at BMT for the first ageBMT bin
-   real value;
-   // spline fitted separately to the counts of thymic total SP4 T cells to estimate the parameters
-   real b0  = 5.94; real b1 = 6.52;  real nu = 91 ;
-   //best fitting spline
-   value = 10^b0 + (10^b1/(1 + ((time - t0)/nu)^2));
-   return value;
- }
- 
+  real sp_numbers(real time) {
+    real t0 = 1.0;
+    real value; real fit1;
+    // spline fitted separately to the counts of thymic SP4 cells
+    // parameters estimated from spline fit to the timecourse of counts of source compartment -- SP CD4
+    real theta0  =  exp(10.5);  real theta_f = 150.0;  real n = 3.0;   real X = 12.0;   real q = 4.0;
+    //best fitting spline
+    fit1 = theta0 + (theta_f * (time - t0)^n) * (1 - (((time - t0)^q)/((X^q) + ((time - t0)^q))));
+
+    if(time < t0){
+      value = theta0;
+    } else {
+      value = fit1;
+    }
+    return value;
+  }
+
+  // spline2 --
+  // proportions of ki67 hi cells in source -- varies with time
+  real eps_spline(real time){
+    real value;
+    //parameters estimated from spline fit to the timecourse of ki67 proportions of source compartment -- SP CD4
+    real eps_0 = 0.1618577; real eps_f = 0.1133708; real A = 0.4837916;
+    real eps5 = exp(- eps_f * (5 + A)) + eps_0;    // the value of ki prop at day 5
+    real fit;
+
+    //best fitting spline
+    if (time <= 5){
+      fit = eps5; //* exp(-0.02196344 * (t-5));
+    } else {
+      fit  = exp(- eps_f * (time + A)) + eps_0;
+    }
+    return fit;
+  }
+
   // initial age distribution of cells exisiting at t0
   real g_age(real age, real[] parms) {
-    real t0 = 40.0;
-    real N0 = parms[1];                         // cell counts at t0
-    real p_age = parms[2];                      // parameter controling age distribution at t0
-    real psi = (N0 * p_age)/(sp_numbers(t0) * (1-exp(-p_age * t0)));
-    real theta_0 = psi * sp_numbers(t0);       // thymic output at t0 i.e. number of most recent emigrants (cells of age 0)
+    real t0 = 1.0;
+    real N0 = parms[1];
     real value;
 
     // Flat, normalised age-distribution of initial cells
     if(age >= 0 && age <= t0) {
-        value = theta_0 * exp(-p_age * age);
-        } else {
-            value = 0;
-            }
+      value = N0/t0;
+    } else {
+      value = 0;
+    }
     return value;
   }
 
   // Total influx into the naive T cell compartment from the thymus (cells/day)
   real theta_spline(real time, real[] parms){
-    real t0 = 40.0;
-    real N0 = parms[1];                         // cell counts at t0
-    real p_age = parms[2];                      // parameter controling age distribution at t0
-    real psi = (N0 * p_age)/(sp_numbers(t0) * (1-exp(-p_age * t0)));
-    
-    return psi * sp_numbers(time);
+    real N0 = parms[1];
+    real t0 = 1.0;
+    real psi;  real value;
+
+    psi = g_age(0.0, parms)/sp_numbers(t0);
+    value = psi * sp_numbers(time);
+    return value;
   }
   
   // spline2 --
@@ -44,19 +67,20 @@ functions{
     // chiEst is the level of stabilised chimerism in the source (FoxP3 negative SP4) compartment
     // qEst is the rate with which cimerism changes in the source (FoxP3 negative SP4) compartment
     // spline fitted separately to the donor chimerism in the thymic FoxP3 negative SP4 T cells to estimate the parameters
-    real value;  real chiEst = 0.8;   real qEst = 0.1;
+    real value;  real chiEst = 0.8;   real qEst = 0.05;
     if (time - 10 < 0){              // t0 = 14 -- assumption: no donor cells seen in FoxP3neg SP4 compartment for 2 weeks
       value = 0;
-      } else {
-        value = chiEst * (1 - exp(-qEst * (time - 10)));
-        }
+    } else {
+      value = chiEst * (1 - exp(-qEst * (time - 10)));
+    }
     return value;
   }
 
   // influx of donor cells into the naive donor T cell compartment from the thymus (cells/day)
   real theta_donor(real time, real[] parms){
     real value;
-    real tBMT = parms[6];
+    real tBMT = parms[5];
+
     //value = theta_spline(time, parms) * (time/tC)^m;
     value = theta_spline(time, parms) * Chi_spline(time - tBMT);
     return value;
@@ -64,99 +88,110 @@ functions{
 
   // influx of host derived cells into the naive host T cell compartment from the thymus (cells/day)
   real theta_host(real time, real[] parms){
+
     return theta_spline(time, parms) - theta_donor(time, parms);
   }
 
-// spline3 --
-// proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
-real donor_eps_spline(real time){
-  real t0 = 40.0;     // mean mouse age at BMT for the first ageBMT bin
-  //parameters estimated from spline fit to the timecourse of ki67 fraction in the donor-derived FoxP3 negative SP4 T cells
-  real b0 = 0.37; real b1= 0.63; real eps_f = 35;
-  return b0 + (b1/(1 + (time/eps_f)^4));
-}
+  // Ki67 distribution within the thymic influx -- varies with time
+  real ki_dist_theta(real ki, real time, real[] parms){
+    real k_bar = 1/exp(1.0);
+    real value;
+    real t0 = 1.0;
 
-// Ki67 distribution within the thymic influx -- varies with time
-real ki_dist_theta(real ki, real time, int subpop){
-  real k_bar = 1/exp(1.0);
-  real value;
-  real t0 = 1.0;
-  
- if(subpop == 1){  // subpop = 1 is total thymic nai Treg pool
     if(ki >= 0 && ki < k_bar){
-      value = (1 - 0.13)/k_bar;
-      } else if (ki >= k_bar && ki <= 1.0){
-          value = (0.13/(1 - k_bar));
-          } else {
-              value = 0.0;
-              }           
-  } else if (subpop == 2) {  // subpop = 1 is host thymic nai Treg pool
-     if(ki >= 0 && ki < k_bar){
-      value = (1 - 0.16)/k_bar;
-      } else if (ki >= k_bar && ki <= 1.0){
-          value = (0.16/(1 - k_bar));
-          } else {
-              value = 0.0;
-              }               
-   } else {  // subpop != 1 is donor thymic nai Treg pool
-      if(ki >= 0 && ki < k_bar){
-          value = (1 - donor_eps_spline(time))/k_bar;
-          } else if (ki >= k_bar && ki <= 1.0){
-              value = (donor_eps_spline(time)/(1 - k_bar));
-              } else {
-                  value = 0.0;
-                  }     
-   } 
-  return value;
-}
+      value = (1 - eps_spline(time))/k_bar;
+    } else if (ki >= k_bar && ki <= 1.0){
+      value = (eps_spline(time)/(1 - k_bar));
+    } else {
+      value = 0.0;
+    }
+    return value;
+  }
 
-// Ki67 distribution of cells exisiting in the periphery at t0
-real ki_dist_init(real ki){
-  real value;
-  real r_ki_init  = 5.69;         // parameter that shapes ki distribution within the init cohort
-  
-  if(ki >= 0.0 && ki <= 1.0){
-    value = exp(-ki * r_ki_init)/((1 - exp(-r_ki_init))/r_ki_init);
+  //  Ki67 distribution of cells exisiting in the periphery at t0
+  real ki_dist_init(real ki){
+    real value;
+    real r_ki_init  = 1;         // parameter that shapes ki distribution within the init cohort
+
+    if(ki >= 0.0 && ki <= 1.0){
+      value = exp(-ki * r_ki_init)/((1 - exp(-r_ki_init))/r_ki_init);
     }  else {
       value = 0.0;
-      }
-  return value;
-}
+    }
+    return value;
+  }
+
 
   // rate of cell division depending on cell age
   real rho_age(real age, real[] parms){
-    real rho   = parms[4];
-    real r_rho = parms[5];
+    real rho   = parms[3];
+    real value  = rho;  // doesnt cahnge with cell age or host age
+    return value;
+  }
 
-    real value  = rho * exp(-r_rho * age);
+  // function that calculates intgral of net loss rate --  solved analytically to speed up the numerical integration
+  real lambda_integ2(real lo_lim, real up_lim, real[] parms){
+    real del0  = parms[2];
+    real rho   = parms[3];
+    real r_del = parms[4];
 
+    // lambda(a) = delta_0 * exp(-r_del * a) - rho;
+
+    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) - rho * (up_lim - lo_lim);
+    return value;
+  }
+
+  // function that calculates intgral of net process rate --  solved analytically to speed up the numerical integration
+  real alpha_integ2(real lo_lim, real up_lim, real[] parms){
+    real del0  = parms[2];
+    real rho   = parms[3];
+    real r_del = parms[4];
+
+    // alpha(a) = delta_0 * exp(-r_del * a) + rho;
+
+    real value = ((del0/r_del) * (exp(-r_del * lo_lim) - exp(-r_del * up_lim))) + rho * (up_lim - lo_lim);
     return value;
   }
 
   // function that calculates intgral of net loss rate --  solved analytically to speed up the numerical integration
   real lambda_integ(real lo_lim, real up_lim, real[] parms){
-    real delta = parms[3];
-    real rho   = parms[4];
-    real r_rho = parms[5];
+    real del0  = parms[2];
+    real rho   = parms[3];
+    real r_del = parms[4];
 
-    real value = (delta * (up_lim - lo_lim)) + ((rho/r_rho) * (exp(-r_rho * up_lim) - exp(-r_rho * lo_lim)));
+    // lambda(a) = delta_0/1+(a/r_del)^2 - rho;
+
+    real value;
+    
+    if (lo_lim == 0){
+      value = del0 * r_del * atan(up_lim/r_del) - rho * up_lim;
+    } else {
+      value = del0 * r_del * (atan(r_del/lo_lim) - atan(r_del/up_lim)) + rho * (lo_lim - up_lim);
+    }
     return value;
   }
 
   // function that calculates intgral of net process rate --  solved analytically to speed up the numerical integration
   real alpha_integ(real lo_lim, real up_lim, real[] parms){
-    real delta = parms[3];
-    real rho   = parms[4];
-    real r_rho = parms[5];
+    real del0  = parms[2];
+    real rho   = parms[3];
+    real r_del = parms[4];
 
-    real value = (delta * (up_lim - lo_lim)) + ((rho/r_rho) * (exp(-r_rho * lo_lim) - exp(-r_rho * up_lim)));
+    // alpha(a) = delta_0/1+(a/r_del)^2 + rho;
+
+    real value;
+    
+    if (lo_lim == 0){
+      value = del0 * r_del * atan(up_lim/r_del) + rho * up_lim;
+    } else {
+      value = del0 * r_del * (atan(r_del/lo_lim) - atan(r_del/up_lim)) + rho * (up_lim - lo_lim);
+    }
     return value;
   }
 
-  
   // Cell age distribution of the initial cohort
   real Asm_init_age(real age, real time, real[] parms) {
-    real t0 = 40.0;
+    real t0 = 1.0;
 
     real value = g_age(t0, parms) * exp(- lambda_integ(age - time + t0, age, parms));
     return value;
@@ -172,7 +207,7 @@ real ki_dist_init(real ki){
   // Cell age distribution of the whole population
   real Asm_total_age(real age, real time, real[] parms){
     real value;
-    real t0 = 40.0;
+    real t0 = 1.0;
 
     if(age < (time - t0)) {
       value =  theta_spline(time - age, parms) * exp(- lambda_integ(0, age, parms));
@@ -185,7 +220,7 @@ real ki_dist_init(real ki){
 
   // Cell age distribution of the initial cohort
   real Asm_Host_init_age(real age, real time, real[] parms) {
-    real tBMT = parms[6];
+    real tBMT = parms[5];
     real value;
 
     if (age >= time - tBMT){
@@ -198,7 +233,7 @@ real ki_dist_init(real ki){
 
    // Cell age distribution of the host theta cohort
    real Asm_Host_theta_age(real age, real time, real[] parms) {
-     real tBMT = parms[6];
+     real tBMT = parms[5];
      real value;
 
      if (age < time - tBMT){
@@ -211,7 +246,7 @@ real ki_dist_init(real ki){
 
    // Cell age distribution of the donor theta cohort
    real Asm_Donor_theta_age(real age, real time, real[] parms) {
-     real tBMT = parms[6];
+     real tBMT = parms[5];
      real value;
 
      if (age < time - tBMT){
@@ -224,7 +259,7 @@ real ki_dist_init(real ki){
 
    // Cell age distribution of the total theta cohort
    real Asm_pooled_age(real age, real time, real[] parms) {
-     real tBMT = parms[6];
+     real tBMT = parms[5];
      real value;
 
      if (age < time  - tBMT){
@@ -238,7 +273,7 @@ real ki_dist_init(real ki){
 
    // Cell age distribution of the host cohort
    real Asm_host_age(real age, real time, real[] parms) {
-     real tBMT = parms[6];
+     real tBMT = parms[5];
      real value;
 
      if (age < time  - tBMT){
@@ -252,7 +287,7 @@ real ki_dist_init(real ki){
 
    // Cell age distribution of the donor cohort
    real Asm_donor_age(real age, real time, real[] parms) {
-     real tBMT = parms[6];
+     real tBMT = parms[5];
      real value;
 
      if (age < time - tBMT){
@@ -266,7 +301,7 @@ real ki_dist_init(real ki){
 
   real[] Asm_total_ode(real age,  real[] y, real[] parms, real[] x_r,  int[] x_i) {
     real value;
-    real time = parms[6];   // time (host age) input  as a param
+    real time = parms[5];   // time (host age) input  as a param
 
     value = Asm_total_age(age, time, parms);
 
@@ -275,7 +310,7 @@ real ki_dist_init(real ki){
 
   real[] Asm_pooled_ode(real age,  real[] y, real[] parms, real[] x_r,  int[] x_i) {
     real value;
-    real time = parms[7];   // time (host age) input  as a param
+    real time = parms[6];   // time (host age) input  as a param
 
     value = Asm_pooled_age(age, time, parms);
 
@@ -284,7 +319,7 @@ real ki_dist_init(real ki){
 
   real[] Asm_host_ode(real age,  real[] y, real[] parms, real[] x_r,  int[] x_i) {
     real value;
-    real time = parms[7];   // time (host age) input  as a param
+    real time = parms[6];   // time (host age) input  as a param
 
     value = Asm_host_age(age, time, parms);
 
@@ -293,7 +328,7 @@ real ki_dist_init(real ki){
 
   real[] Asm_donor_ode(real age,  real[] y, real[] parms, real[] x_r,  int[] x_i) {
     real value;
-    real time = parms[7];   // time (host age) input  as a param
+    real time = parms[6];   // time (host age) input  as a param
 
     value = Asm_donor_age(age, time, parms);
 
@@ -303,7 +338,7 @@ real ki_dist_init(real ki){
   real solve_total_counts(real[] parms) {
     int x_i[0];
     real value;
-    real time = parms[6];   // time (host age) input  as a param
+    real time = parms[5];   // time (host age) input  as a param
 
     // integrate_ode_rk45(function, y0, t0, t, theta, x_r, x_i);
     value = integrate_ode_rk45(Asm_total_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
@@ -313,7 +348,7 @@ real ki_dist_init(real ki){
   real solve_pooled_counts(real[] parms) {
     int x_i[0];
     real value;
-    real time = parms[7];   // time (host age) input  as a param
+    real time = parms[6];   // time (host age) input  as a param
 
     value = integrate_ode_rk45(Asm_pooled_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return value;
@@ -322,7 +357,7 @@ real ki_dist_init(real ki){
   real solve_host_counts(real[] parms) {
     int x_i[0];
     real value;
-    real time = parms[7];   // time (host age) input  as a param
+    real time = parms[6];   // time (host age) input  as a param
 
     value = integrate_ode_rk45(Asm_host_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return value;
@@ -331,7 +366,7 @@ real ki_dist_init(real ki){
   real solve_donor_counts(real[] parms) {
     int x_i[0];
     real value;
-    real time = parms[7];   // time (host age) input  as a param
+    real time = parms[6];   // time (host age) input  as a param
 
     value = integrate_ode_rk45(Asm_donor_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return value;
@@ -341,11 +376,11 @@ real ki_dist_init(real ki){
   real[] N_total_time(real[] time, real[] parms){
    int ndim = size(time);
    real y_solve[ndim];
-   real params[6];
-   params[1:5] = parms[1:5];
+   real params[5];
+   params[1:4] = parms[1:4];
 
    for (i in 1:ndim){
-     params[6] = time[i];
+     params[5] = time[i];
      y_solve[i] = solve_total_counts(params);
    }
    return y_solve;
@@ -355,12 +390,12 @@ real ki_dist_init(real ki){
   real[] N_pooled_time(real[] time, real[] tBMT, real[] parms){
     int ndim = size(time);
     real y_solve[ndim];
-    real params[7];
-    params[1:5] = parms[1:5];
+    real params[6];
+    params[1:4] = parms[1:4];
 
     for (i in 1:ndim){
-      params[6] = tBMT[i];
-      params[7] = time[i];
+      params[5] = tBMT[i];
+      params[6] = time[i];
       y_solve[i] = solve_pooled_counts(params);
     }
     return y_solve;
@@ -370,12 +405,12 @@ real ki_dist_init(real ki){
   real[] N_host_time(real[] time, real[] tBMT, real[] parms){
     int ndim = size(time);
     real y_solve[ndim];
-    real params[7];
-    params[1:5] = parms[1:5];
+    real params[6];
+    params[1:4] = parms[1:4];
 
     for (i in 1:ndim){
-      params[6] = tBMT[i];
-      params[7] = time[i];
+      params[5] = tBMT[i];
+      params[6] = time[i];
       y_solve[i] = solve_host_counts(params);
     }
     return y_solve;
@@ -385,12 +420,12 @@ real ki_dist_init(real ki){
   real[] N_donor_time(real[] time, real[] tBMT, real[] parms){
     int ndim = size(time);
     real y_solve[ndim];
-    real params[7];
-    params[1:5] = parms[1:5];
+    real params[6];
+    params[1:4] = parms[1:4];
 
     for (i in 1:ndim){
-      params[6] = tBMT[i];
-      params[7] = time[i];
+      params[5] = tBMT[i];
+      params[6] = time[i];
       y_solve[i] = solve_donor_counts(params);
     }
     return y_solve;
@@ -398,7 +433,7 @@ real ki_dist_init(real ki){
 
   // init cohort -- The distribution of 'ki' for ages 'age' at times 'time'
   real U_init_ki_age(real ki, real age, real time, real[] parms){
-    real t0 = 40.0;
+    real t0 = 1.0;
     real beta  = 1/3.5;             // rate of loss of ki67 expression.
     real tau = -log(ki)/beta;     // time since cell divisions
     real value;
@@ -413,13 +448,13 @@ real ki_dist_init(real ki){
 
   // theta cohort -- The distribution of 'ki' for ages 'age' at times 'time'
   real U_theta_ki_age(real ki, real age, real time, real[] parms){
-    real t0 = 40.0;
+    real t0 = 1.0;
     real beta  = 1/3.5;             // rate of loss of ki67 expression.
     real tau = -log(ki)/beta;     // time since cell divisions
     real value;
 
     if (ki <= exp(-beta * age)) {
-      value = theta_spline(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time-age, 1) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
+      value = theta_spline(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time - age, parms) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
     } else {
       value = 2.0 * rho_age(age, parms) * Asm_theta_age(age - tau, time - tau, parms) * (1/(beta * ki)) * exp(- alpha_integ(age - tau, age, parms));
     }
@@ -428,7 +463,7 @@ real ki_dist_init(real ki){
 
   // theta cohort -- The distribution of 'ki' for ages 'age' at times 'time'
   real U_total_ki_age(real ki, real age, real time, real[] parms){
-    real t0 = 40.0;
+    real t0 = 1.0;
     real value;
 
     if (age < time - t0){
@@ -441,7 +476,7 @@ real ki_dist_init(real ki){
 
   // init cohort -- The distribution of 'ki' for ages 'age' at times 'time'
   real host_init_ki_age(real ki, real age, real time, real[] parms){
-    real tBMT = parms[6];
+    real tBMT = parms[5];
     real value;
     real beta  = 1/3.5;             // rate of loss of ki67 expression.
     real tau = -log(ki)/beta;     // time since cell divisions
@@ -456,13 +491,13 @@ real ki_dist_init(real ki){
 
   // theta cohort -- The distribution of 'ki' for ages 'age' at times 'time'
   real host_theta_ki_age(real ki, real age, real time, real[] parms){
-    real t0 = 40.0;
+    real t0 = 1.0;
     real beta  = 1/3.5;             // rate of loss of ki67 expression.
     real tau = -log(ki)/beta;     // time since cell divisions
     real value;
 
     if (ki <= exp(-beta * age)) {
-      value = theta_host(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time-age, 2) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
+      value = theta_host(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time - age, parms) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
     } else {
       value = 2.0 * rho_age(age, parms) * Asm_Host_theta_age(age - tau, time - tau, parms) * (1/(beta * ki)) * exp(- alpha_integ(age - tau, age, parms));
     }
@@ -471,13 +506,13 @@ real ki_dist_init(real ki){
 
   // init cohort -- The distribution of 'ki' for ages 'age' at times 'time'
   real donor_theta_ki_age(real ki, real age, real time, real[] parms){
-    real t0 = 40.0;
+    real t0 = 1.0;
     real beta  = 1/3.5;             // rate of loss of ki67 expression.
-    real tau = -log(ki)/beta;       // time since cell divisions
+    real tau = -log(ki)/beta;     // time since cell divisions
     real value;
 
     if (ki <= exp(-beta * age)) {
-      value = theta_donor(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time-age, 3) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
+      value = theta_donor(time - age, parms) * ki_dist_theta(ki * exp(beta * age), time - age, parms) * exp(beta * age) * exp(- alpha_integ(0.0, age, parms));
     } else {
       value = 2.0 * rho_age(age, parms) * Asm_Donor_theta_age(age - tau, time - tau, parms) * (1/(beta * ki)) * exp(- alpha_integ(age - tau, age, parms));
     }
@@ -487,9 +522,9 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution of cells of ki intenisty 'ki'
   real[] U_total_kat(real ki, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[6];
-    real age = parms[7];
-    real t0 = 40.0;
+    real time = parms[5];
+    real age = parms[6];
+    real t0 = 1.0;
     real value;
 
     if (age < time - t0){
@@ -502,9 +537,9 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution of cells of ki intenisty 'ki' for the pooled donor and host compartments
   real[] U_Pooled_kat(real ki, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[7];
-    real age = parms[8];
-    real tBMT = parms[6];
+    real tBMT = parms[5];
+    real time = parms[6];
+    real age = parms[7];
     real value;
 
     if (age < time - tBMT){
@@ -517,9 +552,9 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution of cells of ki intenisty 'ki' for the pooled donor and host compartments
   real[] U_host_kat(real ki, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[7];
-    real age = parms[8];
-    real tBMT = parms[6];
+    real tBMT = parms[5];
+    real time = parms[6];
+    real age = parms[7];
     real value;
 
     if (age < time - tBMT){
@@ -532,9 +567,9 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution of cells of ki intenisty 'ki' for the pooled donor and host compartments
   real[] U_donor_kat(real ki, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[7];
-    real age = parms[8];
-    real tBMT = parms[6];
+    real tBMT = parms[5];
+    real time = parms[6];
+    real age = parms[7];
     real value;
 
     if (age < time - tBMT){
@@ -583,47 +618,47 @@ real ki_dist_init(real ki){
 
   // the age distribution
   real U_total_age(real age, real[] parms){
-    real params[7];
+    real params[6];
     real value;
-    params[1:6] = parms[1:6];
-    params[7] = age;
+    params[1:5] = parms[1:5];
+    params[6] = age;
 
     return U_total_at(params);
   }
 
   // the age distribution
   real U_Pooled_age(real age, real[] parms){
-    real params[8];
+    real params[7];
     real value;
-    params[1:7] = parms[1:7];
-    params[8] = age;
+    params[1:6] = parms[1:6];
+    params[7] = age;
 
     return U_Pooled_at(params);
   }
 
   // the age distribution
   real U_host_age(real age, real[] parms){
-    real params[8];
+    real params[7];
     real value;
-    params[1:7] = parms[1:7];
-    params[8] = age;
+    params[1:6] = parms[1:6];
+    params[7] = age;
 
     return U_host_at(params);
   }
 
   // the age distribution
   real U_donor_age(real age, real[] parms){
-    real params[8];
+    real params[7];
     real value;
-    params[1:7] = parms[1:7];
-    params[8] = age;
+    params[1:6] = parms[1:6];
+    params[7] = age;
 
     return U_donor_at(params);
   }
 
   // The integrand function for age distribution at time 'time'
   real[] U_total_ode(real age, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[6];
+    real time = parms[5];
     real value = U_total_age(age, parms);
 
     return {value};
@@ -631,7 +666,7 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution at time 'time'
   real[] U_Pooled_ode(real age, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[7];
+    real time = parms[6];
     real value = U_Pooled_age(age, parms);
 
     return {value};
@@ -639,7 +674,7 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution at time 'time'
   real[] U_host_ode(real age, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[7];
+    real time = parms[6];
     real value = U_host_age(age, parms);
 
     return {value};
@@ -647,7 +682,7 @@ real ki_dist_init(real ki){
 
   // The integrand function for age distribution at time 'time'
   real[] U_donor_ode(real age, real[] y, real[] parms, real[] x_r, int[] x_i){
-    real time = parms[7];
+    real time = parms[6];
     real value = U_donor_age(age, parms);
 
     return {value};
@@ -656,7 +691,7 @@ real ki_dist_init(real ki){
   // integral across age values -- 0.0 to time
   real U_total_t(real[] parms){
     int x_i[0];
-    real time = parms[6];
+    real time = parms[5];
 
     real y_solve = integrate_ode_rk45(U_total_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return y_solve;
@@ -665,7 +700,7 @@ real ki_dist_init(real ki){
   // integral across age values -- 0.0 to time
   real U_Pooled_t(real[] parms){
     int x_i[0];
-    real time = parms[7];
+    real time = parms[6];
 
     real y_solve = integrate_ode_rk45(U_Pooled_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return y_solve;
@@ -674,7 +709,7 @@ real ki_dist_init(real ki){
   // integral across age values -- 0.0 to time
   real U_host_t(real[] parms){
     int x_i[0];
-    real time = parms[7];
+    real time = parms[6];
 
     real y_solve = integrate_ode_rk45(U_host_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return y_solve;
@@ -683,7 +718,7 @@ real ki_dist_init(real ki){
   // integral across age values -- 0.0 to time
   real U_donor_t(real[] parms){
     int x_i[0];
-    real time = parms[7];
+    real time = parms[6];
 
     real y_solve = integrate_ode_rk45(U_donor_ode, {0.0}, 0.0, rep_array(time, 1), parms, {0.0}, x_i)[1, 1];
     return y_solve;
@@ -693,11 +728,11 @@ real ki_dist_init(real ki){
   real[] U_total_time(real[] time, real[] parms){
    int ndim = size(time);
    real y_solve[ndim];
-   real params[6];
-   params[1:5] = parms[1:5];
+   real params[5];
+   params[1:4] = parms[1:4];
 
    for (i in 1:ndim){
-     params[6] = time[i];
+     params[5] = time[i];
      y_solve[i] = U_total_t(params);
    }
    return y_solve;
@@ -707,12 +742,12 @@ real ki_dist_init(real ki){
   real[] U_Pooled_time(real[] time, real[] tBMT, real[] parms){
    int ndim = size(time);
    real y_solve[ndim];
-   real params[7];
-   params[1:5] = parms[1:5];
+   real params[6];
+   params[1:4] = parms[1:4];
 
    for (i in 1:ndim){
-     params[6] = tBMT[i];
-     params[7] = time[i];
+     params[5] = tBMT[i];
+     params[6] = time[i];
      y_solve[i] = U_Pooled_t(params);
    }
    return y_solve;
@@ -722,12 +757,12 @@ real ki_dist_init(real ki){
   real[] U_host_time(real[] time, real[] tBMT, real[] parms){
    int ndim = size(time);
    real y_solve[ndim];
-   real params[7];
-   params[1:5] = parms[1:5];
+   real params[6];
+   params[1:4] = parms[1:4];
 
    for (i in 1:ndim){
-     params[6] = tBMT[i];
-     params[7] = time[i];
+     params[5] = tBMT[i];
+     params[6] = time[i];
      y_solve[i] = U_host_t(params);
    }
    return y_solve;
@@ -737,12 +772,12 @@ real ki_dist_init(real ki){
   real[] U_donor_time(real[] time, real[] tBMT, real[] parms){
    int ndim = size(time);
    real y_solve[ndim];
-   real params[7];
-   params[1:5] = parms[1:5];
+   real params[6];
+   params[1:4] = parms[1:4];
 
    for (i in 1:ndim){
-     params[6] = tBMT[i];
-     params[7] = time[i];
+     params[5] = tBMT[i];
+     params[6] = time[i];
      y_solve[i] = U_donor_t(params);
    }
    return y_solve;
@@ -864,7 +899,6 @@ transformed data{
 
 parameters{
   real<lower=1E5, upper=3E6> N0;                  // total cells counts at t0
-  real p_age;
   real<lower=0.0, upper=1.0> delta;
   real<lower=0.0, upper=1.0> rho;
   real r_del;
@@ -876,7 +910,7 @@ parameters{
 }
 
 transformed parameters{
-  vector[5] global_params;
+  vector[4] global_params;
   vector[n_solve] y3_solve;               // PDE prediction for counts from chimera data
   vector[n_solve] y4_solve;               // PDE prediction for Nfd from chimera data
   vector[n_solve] y5_solve;               // PDE prediction for ki proportions in donor compartment from chimera data
@@ -889,10 +923,9 @@ transformed parameters{
   vector[numObs4] ki_host_naive_mean;              // ODE predictions for naive Treg host ki67 proportions in thymus
 
   global_params[1] = N0;
-  global_params[2] = p_age;
-  global_params[3] = delta;
-  global_params[4] = rho;
-  global_params[5] = r_del;
+  global_params[2] = delta;
+  global_params[3] = rho;
+  global_params[4] = r_del;
 
   // combining the output from all the shards
   y_mean_stacked = map_rect(math_reduce, global_params, local_params, x_r, x_i);
@@ -920,22 +953,20 @@ transformed parameters{
 
 model{
   N0 ~ normal(1e6, 3E5);
-  p_age ~ normal(0.0, 0.3);
   delta ~ normal(0.05, 0.3);
   rho ~ normal(0.005, 0.3);
   r_del ~ normal(0.0, 0.3);
 
-  sigma_counts ~ normal(0.4, 0.1);
-  sigma_Nfd ~ normal(0.2, 0.05);
-  sigma_donor_ki ~ normal(0.03, 0.05);
-  sigma_host_ki ~ normal(0.03, 0.05);
+  sigma_counts ~ normal(0.5, 0.5);
+  sigma_Nfd ~ normal(0.4, 0.5);
+  sigma_donor_ki ~ normal(0.3, 0.5);
+  sigma_host_ki ~ normal(0.2, 2);
 
   log(counts_naive) ~ normal(log(counts_naive_mean), sigma_counts);
   asinsqrt_array(Nfd_naive) ~ normal(asinsqrt_array(to_array_1d(Nfd_naive_mean)), sigma_Nfd);
   asinsqrt_array(ki_donor_naive) ~ normal(asinsqrt_array(to_array_1d(ki_donor_naive_mean)), sigma_donor_ki);
   asinsqrt_array(ki_host_naive) ~ normal(asinsqrt_array(to_array_1d(ki_host_naive_mean)), sigma_host_ki);
 }
-
 
 generated quantities{
   real y_chi_pred1[numPred, 4];
