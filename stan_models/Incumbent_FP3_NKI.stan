@@ -4,8 +4,8 @@ functions{
  real sp_numbers(real time) {
    real t0 = 40.0;     // mean mouse age at BMT for the first ageBMT bin
    real value;
-   // spline fitted separately to the counts of thymic total SP4 T cells to estimate the parameters
-   real b0  = 5.94; real b1 = 6.52;  real nu = 91 ;
+   // spline fitted separately to the counts of thymic FoxP3 negative SP4 T cells to estimate the parameters
+   real b0  = 4.3; real b1 = 5.1;  real nu = 40 ;
    //best fitting spline
    value = 10^b0 + (10^b1/(1 + ((time - t0)/nu)^2));
    return value;
@@ -23,7 +23,7 @@ functions{
     // chiEst is the level of stabilised chimerism in the source (FoxP3 negative SP4) compartment
     // qEst is the rate with which cimerism changes in the source (FoxP3 negative SP4) compartment
     // spline fitted separately to the donor chimerism in the thymic FoxP3 negative SP4 T cells to estimate the parameters
-    real value;  real chiEst = 0.8;   real qEst = 0.1;
+    real value;  real chiEst = 0.8;   real qEst = 0.05;
     if (time - 10 < 0){              // t0 = 14 -- assumption: no donor cells seen in FoxP3neg SP4 compartment for 2 weeks
       value = 0;
     } else {
@@ -31,14 +31,6 @@ functions{
     }
     return value;
   }
-
-// spline3 --
-// proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
-real donor_eps_spline(real time){
-  //parameters estimated from spline fit to the timecourse of ki67 fraction in the donor-derived FoxP3 negative SP4 T cells
- real b0 = 0.37; real b1= 0.63; real eps_f = 20;
- return b0 + (b1/(1 + (time/eps_f)^4));
-}
 
 real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
   real psi = parms[1];
@@ -48,7 +40,8 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
 
   real dydt[6];
   real kloss  = 1/3.5;            //rate of loss of ki67
-  real eps_host = 0.15;           // Mean Ki67 hi fraction in host-BM-derived total SP4 T cells
+  real eps_host = 0.0;            // No inheritance of Ki67+ cells from the source
+  real eps_donor = 0.0;           // No inheritance of Ki67+ cells from the source
 
   // age of BMT in each recipient
   real ageAtBMT = parms[5];
@@ -65,9 +58,9 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
 
   // Donor naive Tregs
   // ki hi displaceable
-  dydt[5] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time - ageAtBMT) + rho_D * (2 * y[6] + y[5]) - (kloss + delta_D) * y[5];
+  dydt[5] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * eps_donor + rho_D * (2 * y[6] + y[5]) - (kloss + delta_D) * y[5];
   // ki lo displaceable
-  dydt[6] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time - ageAtBMT)) + kloss * y[5]  - (rho_D + delta_D) * y[6];
+  dydt[6] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - eps_donor) + kloss * y[5]  - (rho_D + delta_D) * y[6];
   
   return dydt;
 }

@@ -9,7 +9,7 @@ library(bayesplot)
 ####################################################################################
 
 ## model specific details that needs to be change for every run
-modelName <- "Incumbent_SP4_NKI"
+modelName <- "Incumbent_memTreg_naiTreg"
 
 ## Setting all the directories for opeartions
 projectDir <- getwd()
@@ -29,7 +29,7 @@ stanfit1 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c1", ".csv")))
 stanfit2 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c2",".csv")))
 stanfit3 <- read_stan_csv(file.path(saveDir, paste0(modelName, "_c3",".csv")))
 
-fit <- sflist2stanfit(list(stanfit3))
+fit <- sflist2stanfit(list(stanfit1, stanfit3))
 
 # finding the parameters used in the model 
 # using the last parameter("sigma4") in the array to get the total number of parameters set in the model
@@ -43,78 +43,49 @@ nPost <- nrow(fit)
 ################################################################################################
 
 ## loading required datasets for plotting
-counts_file <- file.path("data", "Counts_Treg.csv")
-counts_data <- read.csv(counts_file) %>% 
+## importing data to be fitted 
+Nfd_file <- file.path("data", "Treg_memory_Nfd.csv")
+Treg_memory_Nfd <- read.csv(Nfd_file) %>% 
   arrange(age.at.S1K) %>%
-  mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
-                             ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) #%>%
-  #gather(c(naive, memory), key='location', value = 'total_counts')
-  #select(-memory)
-
-Nfd_file <- file.path("data", "Nfd_Treg.csv")
-Nfd_data <- read.csv(Nfd_file) %>% 
-  arrange(age.at.S1K)%>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
                                     ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) %>%
-  select(-contains("chi"))
+  select(-Popln)
 
-hostki_file <- file.path("data", "hostKi67_Treg.csv")
-hostki_data <- read.csv(hostki_file) %>% 
+ki_file <- file.path("data", "Treg_memory_ki.csv")
+Treg_memory_ki <- read.csv(ki_file) %>% 
   arrange(age.at.S1K) %>%
   mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
                              ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
-         subcomp='Host') #%>%
-  #gather(c(naive, memory), key='location', value = 'prop_ki')
-  #select(-memory)
+                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4')))) %>%
+  select(-Popln) %>% rename(Donor = ki_donor, Host = ki_host) %>%
+  gather(c(Donor, Host), key = "subcomp", value = "ki_prop") 
 
-donorki_file <- file.path("data", "donorKi67_Treg.csv")
-donorki_data <- read.csv(donorki_file) %>% 
-  arrange(age.at.S1K) %>%
-  mutate(ageBMT_bin = ifelse(age.at.BMT <= 56, 'agebin1',
-                             ifelse(age.at.BMT <= 70, 'agebin2',
-                                    ifelse(age.at.BMT <= 84, 'agebin3', 'agebin4'))),
-         subcomp='Donor') #%>%
-  #gather(c(naive, memory), key='location', value = 'prop_ki')
-  #select(-memory)
-
-
-ki_data <- rbind(donorki_data, hostki_data)
 
 # ################################################################################################
 # calculating PSIS-L00-CV for the fit
-naive_counts_loglik <- extract_log_lik(fit, parameter_name = "log_lik_counts_naive", merge_chains = TRUE)
-naive_fd_loglik <- extract_log_lik(fit, parameter_name = "log_lik_Nfd_naive", merge_chains = TRUE)
-ki_donor_loglik <- extract_log_lik(fit, parameter_name = "log_lik_ki_donor_naive", merge_chains = TRUE)
-ki_host_loglik <- extract_log_lik(fit, parameter_name = "log_lik_ki_host_naive", merge_chains = TRUE)
+naive_counts_loglik <- extract_log_lik(fit, parameter_name = "log_lik_counts", merge_chains = TRUE)
+naive_fd_loglik <- extract_log_lik(fit, parameter_name = "log_lik_Nfd", merge_chains = TRUE)
+ki_donor_loglik <- extract_log_lik(fit, parameter_name = "log_lik_ki_donor", merge_chains = TRUE)
+ki_host_loglik <- extract_log_lik(fit, parameter_name = "log_lik_ki_host", merge_chains = TRUE)
 
 #combined_loglik <- extract_log_lik(fit, parameter_name = "log_lik", merge_chains = TRUE)
 log_lik_comb <- cbind(naive_counts_loglik, naive_fd_loglik,
                       ki_donor_loglik, ki_host_loglik)
 
-
 # optional but recommended
-ll_array <- extract_log_lik(fit,parameter_name = "log_lik_counts_naive", merge_chains = FALSE)
+ll_array <- extract_log_lik(fit,parameter_name = "log_lik_counts", merge_chains = FALSE)
 r_eff <- relative_eff(exp(ll_array))
 
 # loo-ic values
 loo_loglik <- loo(log_lik_comb, save_psis = FALSE, cores = 8)
-# 
-# # Widely applicable AIC
-# AICw_lok <- waic(cbind(naive_counts_loglik, naive_fd_loglik, 
-#                       ki_donor_loglik, ki_host_loglik))
-# 
-# # AIC from LLmax
-# #AIC_lok <-  -2 * max(combined_loglik)  + 2 * length(parametersToPlot)
 ploocv <- data.frame("Model" = modelName,
                      "LooIC" = loo_loglik$estimates[3],
                      "SE" = loo_loglik$estimates[6],
                      "PLoo" = loo_loglik$estimates[2])
 ploocv
-# 
-write.table(ploocv, file = file.path(outputDir, "stat_table_naive.csv"),
+
+write.table(ploocv, file = file.path(outputDir, "stat_table2.csv"),
             sep = ",", append = T, quote = FALSE,
             col.names = F, row.names = FALSE)
 
@@ -130,7 +101,7 @@ write.csv(out_table, file = file.path(outputDir, paste0('params_', modelName, ".
 ################################################################################################
 ## posterior predictive distributions
 
-source('scripts/stan_extract_forplotting.R')
+source('scripts/stan_extract_forplotting_mem.R')
 
 legn_labels <- c('6-8', '8-10', '10-12', '12-25')
 
@@ -140,14 +111,11 @@ ggplot() +
   geom_line(data = Counts_pred, aes(x = timeseries, y = median, color = ageBMT_bin)) +
   #geom_errorbar(data = Counts_sigma_obs, aes(x = timeseries, ymin = lb, ymax = ub, col=ageBMT_bin),
   #              alpha = 0.25, width=0.02)+
-  #geom_errorbar(data = Counts_per_sigma_obs, aes(x = timeseries, ymin = lb, ymax = ub, col=ageBMT_bin),
-  #              alpha = 0.15, width=0.02)+
-  geom_point(data = counts_data, aes(x = age.at.S1K, y = naive, color = ageBMT_bin), size=2) +
-  labs(title=paste('Total counts of naive Tregs'),  y=NULL, x= "Host age (days)") + 
+  geom_point(data = Treg_memory_Nfd, aes(x = age.at.S1K, y = total_counts, color = ageBMT_bin), size=2) +
+  labs(title=paste('Total counts of memory Tregs'),  y=NULL, x= "Host age (days)") + 
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
   scale_x_continuous(limits = c(60, 450) , trans="log10", breaks=c(10, 30, 100, 300)) + #scale_y_log10() +
-  scale_y_continuous(limits = c(5e4, 2e7), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
-  #facet_wrap(~ factor(location, levels = c('naive', "memory")))+
+  scale_y_continuous(limits = c(5e4, 5e6), trans="log10", breaks=c(1e4, 1e5, 1e6, 1e7, 1e8), minor_breaks = log10minorbreaks, labels =fancy_scientific) +
   guides(fill = 'none') + myTheme 
 
 ggsave(filename = file.path(outputDir, paste0(modelName, "P1.pdf")), last_plot(),
@@ -155,16 +123,14 @@ ggsave(filename = file.path(outputDir, paste0(modelName, "P1.pdf")), last_plot()
 
 
 # normalised donor fractions
-
 ggplot() +
   geom_ribbon(data = Nfd_pred, aes(x = timeseries, ymin = lb, ymax = ub, fill = ageBMT_bin), alpha = 0.15)+
   geom_line(data = Nfd_pred, aes(x = timeseries, y = median, color = ageBMT_bin)) +
-  geom_point(data = Nfd_data, aes(x = age.at.S1K, y = naive, color = ageBMT_bin), size=2) +
-  labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in naive Tregs") +
+  geom_point(data = Treg_memory_Nfd, aes(x = age.at.S1K, y = Nfd, color = ageBMT_bin), size=2) +
+  labs(x = "Host age (days)", y = NULL, title = "Normalised Chimerism in memory Tregs") +
   scale_color_discrete(name="Host age at \n BMT (Wks)", labels=legn_labels)+
   scale_x_continuous(limits = c(1, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 1.02), breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) + 
- # facet_wrap(~ factor(location, levels = c('naive', "memory")))+
   guides(fill='none')+ myTheme
 
 
@@ -176,10 +142,10 @@ ggsave(filename = file.path(outputDir, paste0(modelName, "P2.pdf")), last_plot()
 fac_labels <- c(`agebin1`= '6-8 weeks', `agebin2`= '8-10 weeks', `agebin3`= '10-12 weeks', `agebin4`= '12-25 weeks')
 
 ggplot() +
-  geom_ribbon(data = ki_naive_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
-  geom_line(data = ki_naive_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
-  geom_point(data = ki_data, aes(x = age.at.S1K, y = naive*100, color = subcomp), size=1.5) +
-  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in naive Tregs") +
+  geom_ribbon(data = ki_pred, aes(x = timeseries, ymin = lb*100, ymax = ub*100, fill = subcomp), alpha = 0.15)+
+  geom_line(data = ki_pred, aes(x = timeseries, y = median*100, color = subcomp)) +
+  geom_point(data = Treg_memory_ki, aes(x = age.at.S1K, y = ki_prop * 100, color = subcomp), size=1.5) +
+  labs(x = "Host age (days)", y = NULL, title = "% Ki67hi in memory Tregs") +
   scale_x_continuous(limits = c(60, 450), breaks = c(0,100,200,300, 400, 500))+
   scale_y_continuous(limits =c(0, 50), breaks = c(0, 10, 20, 30, 40, 50))+ 
   facet_wrap(~ ageBMT_bin, scales = 'free', labeller = as_labeller(fac_labels))+

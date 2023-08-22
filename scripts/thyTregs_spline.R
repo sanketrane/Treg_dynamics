@@ -130,35 +130,37 @@ source_hostKi67$TH.SP4 %>% mean()
 ## phenomenological function
 ki_spline <- function(age.at.S1K, b0, eps_f){
   Time = age.at.S1K   ###
-  t0 = 40
   return(b0 * (1 + exp(-eps_f * (Time-t0))))
 }
 
-timeseq <- seq(40, 450)
-ki_spline <- function(age.at.S1K, b0, b1, eps_f){
-  Time = age.at.S1K - 40
+timeseq <- seq(0, 300)
+ki_spline <- function(Time, b0, b1, eps_f){
   return(b0 + (b1/(1 + (Time/eps_f)^4)))
 }
 
 
-ki_nlm <- nls((TH.SP4/100) ~ (ki_spline(age.at.S1K, b0, b1, eps_f)),
+ki_nlm <- nls((TH.SP4/100) ~ (ki_spline(age.at.S1K - age.at.BMT, b0, b1, eps_f)),
                       data =  source_donorKi67,
-                      start = list(b0=0.2, b1=0.6,  eps_f=40))
+                      start = list(b0=0.4, b1=0.6,  eps_f=60))
 ki_pars <- coef(ki_nlm)
 
 ki_fit <- data.frame(timeseq, "y_sp" = ki_spline(timeseq, ki_pars[1], ki_pars[2], ki_pars[3]))
-ki_fit_m <- data.frame(timeseq, "y_sp" = ki_spline(timeseq, 0.37, 0.63, 35))
+ki_fit_m <- data.frame(timeseq, "y_sp" = ki_spline(timeseq, 0.37, 0.63, 20))
 
 ggplot() + 
-  geom_point(data=source_donorKi67, aes(x=age.at.S1K, y=TH.SP4), col=4, size =2) +
+  geom_point(data=source_donorKi67, aes(x=age.at.S1K-age.at.BMT, y=TH.SP4), col=4, size =2) +
   #geom_line(data = ki_fit, aes(x = timeseq , y = y_sp*100), col=4, size =1) + 
   geom_line(data = ki_fit_m, aes(x = timeseq , y = y_sp*100), col=4, size =1) + 
-  #scale_y_log10(limits=c(1e3, 2e5)) + xlim(40, 450)+
+  scale_y_log10(limits=c(10, 100)) + xlim(0, 300)+
   labs(title = 'Ki poportions in donor SP4 cells',  y=NULL,  x = 'Host age (days)') 
 
+
+naiTreg_host_ki <- source_hostKi67$TH.SP4 %>% mean()
+
 ggplot() + 
-  geom_point(data=source_donorKi67, aes(x=age.at.S1K, y=TH.SP4/100), col=4, size =2) +
-  #geom_point(data=source_hostKi67, aes(x=age.at.S1K, y=TH.SP4/100), col=2, size =2) +
+  #geom_point(data=source_donorKi67, aes(x=age.at.S1K, y=TH.SP4/100), col=4, size =2) +
+  geom_point(data=source_hostKi67, aes(x=age.at.S1K, y=TH.SP4/100), col=2, size =2) +
+  geom_line(aes(x = dpt_seq , y = naiTreg_host_ki), col=2, size =1) + 
   xlim(40, 450) + ylim(0,1)+
   labs(title = 'Total counts of thymic FoxP3 positive naive SP4 cells',  y=NULL,  x = 'Host age (days)') 
 

@@ -1,4 +1,4 @@
-### data wrangling for Marginal Zone compartmnet
+### data wrangling for naive Tregs
 rm(list = ls()); gc();
 
 library(tidyverse)

@@ -40,8 +40,8 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
 
   real dydt[6];
   real kloss  = 1/3.5;            //rate of loss of ki67
-  real eps_host = 0.15;     // Mean Ki67 hi fraction in host-BM-derived FoxP3 positive Sp4 T cells
-  real eps_donor = 0.09;     // Mean Ki67 hi fraction in donor-BM-derived FoxP3 positive Sp4 T cells
+  real eps_host = 0.15;           // Mean Ki67 hi fraction in host-BM-derived FoxP3 positive Sp4 T cells
+  real eps_donor = 0.09;          // Mean Ki67 hi fraction in donor-BM-derived FoxP3 positive Sp4 T cells
 
   // age of BMT in each recipient
   real ageAtBMT = parms[5];

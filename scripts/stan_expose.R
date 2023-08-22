@@ -4,16 +4,16 @@ library(rstan)
 library(tidyverse)
 
 ## model
-modelName <- "ASM_deltavar_FP3"
+modelName <- "Incumbent_memTreg_naiTreg"
 outputDir <- file.path("output_fit")
 rstan::expose_stan_functions(file.path("stan_models", paste0(modelName, ".stan")))
 #params <- c(1.363198e+05, 0.01, 0.04, 0.02, 0.002)
-params <- c(1096284, 0.00624, 0.03, 0.017, 0.0012)
-par_inc <- c(0.3, 0.01, 0.05, 0.02, 10, 11, 9, 10)
+#params <- c(1096284, 0.00624, 0.03, 0.017, 0.0012)
+par_inc <- c(0.03, 0.01, 0.05, 0.02, 10, 11, 9, 10)
 theta <- c(0)
 x_i <- c(60)
 x_r <- c(100)
-math_reduce(params, theta, x_r, x_i)
+math_reduce(par_inc, theta, x_r, x_i)
 
 ## ts
 ts_pred1 <- 10^seq(log10(66), log10(450), length.out = 300)

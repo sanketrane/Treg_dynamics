@@ -35,8 +35,9 @@ functions{
 // spline3 --
 // proportions of ki67hi cells in the donor-derived FoxP3 negative SP4 T cells -- varies with time
 real donor_eps_spline(real time){
-  //parameters estimated from spline fit to the timecourse of ki67 fraction in the donor-derived FoxP3 negative SP4 T cells
- real b0 = 0.37; real b1= 0.63; real eps_f = 20;
+  real t0 = 40.0;     // mean mouse age at BMT for the first ageBMT bin
+ //parameters estimated from spline fit to the timecourse of ki67 fraction in the donor-derived FoxP3 negative SP4 T cells
+ real b0 = 0.37; real b1= 0.63; real eps_f = 35;
  return b0 + (b1/(1 + (time/eps_f)^4));
 }
 
@@ -48,7 +49,8 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
 
   real dydt[6];
   real kloss  = 1/3.5;            //rate of loss of ki67
-  real eps_host = 0.15;           // Mean Ki67 hi fraction in host-BM-derived total SP4 T cells
+  real eps_host = 0.0;            // No inheritance of Ki67+ cells from the source
+  real eps_donor = 0.0;           // No inheritance of Ki67+ cells from the source
 
   // age of BMT in each recipient
   real ageAtBMT = parms[5];
@@ -65,9 +67,9 @@ real[] shm_chi(real time, real[] y, real[] parms, real[] rdata,  int[] idata) {
 
   // Donor naive Tregs
   // ki hi displaceable
-  dydt[5] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time - ageAtBMT) + rho_D * (2 * y[6] + y[5]) - (kloss + delta_D) * y[5];
+  dydt[5] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * donor_eps_spline(time) + rho_D * (2 * y[6] + y[5]) - (kloss + delta_D) * y[5];
   // ki lo displaceable
-  dydt[6] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time - ageAtBMT)) + kloss * y[5]  - (rho_D + delta_D) * y[6];
+  dydt[6] = theta_spline(time, psi) * Chi_spline(time - ageAtBMT) * (1 - donor_eps_spline(time)) + kloss * y[5]  - (rho_D + delta_D) * y[6];
   
   return dydt;
 }
